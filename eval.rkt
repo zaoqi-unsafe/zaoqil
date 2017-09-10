@@ -31,28 +31,25 @@
 (define (rlist-cons x xs) (λ (rs) (xs (cons x rs))))
 (define (run-rlist xs) (xs '()))
 
-(define ((lazyf f) . args)
-  (let loop ([xs args] [rs rlist-nil])
+(define (unlazy-list xs f)
+  (let loop ([xs xs] [rs rlist-nil])
     (cond
-      [(null? xs) (apply f (run-rlist rs))]
-      [(promise? (car xs)) (delay (loop (cons (force (car xs)) (cdr xs)) rs))]
+      [(null? xs) (f (run-rlist rs))]
+      [(promise? (car xs)) (delay (loop (cons (car xs) (cdr xs)) rs))]
       [else (loop (cdr xs)) (rlist-cons (car xs) rs)])))
-
-(define-syntax-rule (define-lazy (f arg ...) body ...)
-  (define f (lazyf (λ (arg ...) body ...))))
 
 (define (unlazy x f)
   (if (promise? x)
       (delay (unlazy (force x) f))
       (f x)))
 
-(define-lazy (%lazymap f xs)
-  (if (null? xs)
-      '()
-      (unlazy xs (λ (xs)
-                   (cons (f (car xs)) (%lazymap f (cdr xs)))))))
-
-(define (lazymap f xs) (%lazymap (lazyf f) xs))
+(define (lazymap f xs)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         '()
+         (cons (f (car xs)) (lazymap f (cdr xs)))))))
 
 (define (eapply env f args)
   (delay
@@ -102,3 +99,5 @@
    args
    (λ (args)
      (car args))))
+
+(define-primitive (record env args) (error))
