@@ -96,3 +96,9 @@
   (%define-primitive (quote f)
                      (λ (env args)
                        body ...)))
+
+(define-primitive (quote env args)
+  (unlazy
+   args
+   (λ (args)
+     (car args))))
