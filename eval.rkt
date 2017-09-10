@@ -34,8 +34,8 @@
 (define (unlazy-list xs f)
   (let loop ([xs xs] [rs rlist-nil])
     (cond
+      [(promise? xs) (delay (unlazy-list (force xs) f))]
       [(null? xs) (f (run-rlist rs))]
-      [(promise? (car xs)) (delay (loop (cons (car xs) (cdr xs)) rs))]
       [else (loop (cdr xs)) (rlist-cons (car xs) rs)])))
 
 (define (unlazy x f)
@@ -78,10 +78,8 @@
    (λ (e)
      (cond
        [(symbol? e) (hash-ref env e)]
-       [(number? e) e]
-       [(char? e) e]
        [(pair? e) (eapply env (%eval env (car e)) (cdr e))]
-       [else (error '%eval)]))))
+       [else e]))))
 
 (define global-env (hash))
 
@@ -100,4 +98,25 @@
    (λ (args)
      (car args))))
 
-(define-primitive (record env args) (error))
+(define (mp xs)
+  (let loop ([xs xs] [ps '()])
+    (if (null? xs)
+        ps
+        (loop (cddr xs) (cons (cons (car xs) (cadr xs)) ps)))))
+
+
+#| Hash Symbol Any → Record |#
+(struct record (v))
+
+(define-primitive (record env args)
+  (unlazy-list
+   args
+   (λ (args)
+     (let loop ([xs (mp args)] [r (hash)])
+       (if (null? xs)
+           (record r)
+           (let ([x (car xs)])
+             (unlazy
+              (car x)
+              (λ (s)
+                (loop (cdr xs) (hash-set r s (cdr x)))))))))))
