@@ -22,7 +22,7 @@
 #| Func → Macro |#
 (struct macro (v))
 
-#| (a ... → b) → Primitive  |#
+#| (Env → Exp → b) → Primitive  |#
 (struct eprimitive (v))
 
 (define (eeval env code) (delay (%eval env code)))
@@ -55,21 +55,44 @@
 (define (lazymap f xs) (%lazymap (lazyf f) xs))
 
 (define (eapply env f args)
-  (unlazy f (λ (f)
-  (cond
-    [(eprimitive? f) ((eprimitive-v f) env args)]
-    [(macro? f) (eeval (eapply env (macro-v f) (lazymap (λ (x) (cons 'quote x)) args)))]
-    [else
-     (let ([arg (func-arg f)] [body (func-body f)] [e (func-env f)])
-       (unlazy args
-               (λ (as)
-                 (let ([v (eeval
-                           (hash-set e arg (eeval env (car as)))
-                           body)])
-                   (unlazy (cdr as)
-                           (λ (d)
-                             (if (null? d)
-                                 v
-                                 (eapply env v d))))))))]))))
+  (delay
+    (unlazy
+     f
+     (λ (f)
+       (cond
+         [(eprimitive? f) ((eprimitive-v f) env args)]
+         [(macro? f) (eeval (eapply env (macro-v f) (lazymap (λ (x) (cons 'quote x)) args)))]
+         [else
+          (let ([arg (func-arg f)] [body (func-body f)] [e (func-env f)])
+            (unlazy args
+                    (λ (as)
+                      (let ([v (eeval
+                                (hash-set e arg (eeval env (car as)))
+                                body)])
+                        (unlazy (cdr as)
+                                (λ (d)
+                                  (if (null? d)
+                                      v
+                                      (eapply env v d))))))))])))))
 
-(define (%eval) (error))
+(define (%eval env code)
+  (unlazy
+   code
+   (λ (e)
+     (cond
+       [(symbol? e) (hash-ref env e)]
+       [(number? e) e]
+       [(char? e) e]
+       [(pair? e) (eapply env (%eval env (car e)) (cdr e))]
+       [else (error '%eval)]))))
+
+(define global-env (hash))
+
+#| Symbol → (Env → Exp → b) → Void |#
+(define (%define-primitive s x)
+  (set! global-env (hash-set global-env s x)))
+
+(define-syntax-rule (define-primitive (f env args) body ...)
+  (%define-primitive (quote f)
+                     (λ (env args)
+                       body ...)))
