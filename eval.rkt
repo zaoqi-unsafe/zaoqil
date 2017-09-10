@@ -61,7 +61,7 @@
      (λ (f)
        (cond
          [(eprimitive? f) ((eprimitive-v f) env args)]
-         [(macro? f) (eeval (eapply env (macro-v f) (lazymap (λ (x) (cons 'quote x)) args)))]
+         [(macro? f) (eeval (eapply env (macro-v f) (lazymap (λ (x) (list 'quote x)) args)))]
          [else
           (let ([arg (func-arg f)] [body (func-body f)] [e (func-env f)])
             (unlazy args
