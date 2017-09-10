@@ -124,3 +124,13 @@
               (car x)
               (λ (s)
                 (loop (cdr xs) (hash-set r s (eeval env (cdr x))))))))))))
+
+(define-syntax-rule (define-primitive-f (f env args) body ...)
+  (define-primitive (f env a)
+    (let ([a2 (lazymap (λ (x) (eeval env x)) a)])
+      (unlazy-list
+       a2
+       (λ (args)
+         body ...)))))
+
+(define-primitive-f (open env args) (error))
