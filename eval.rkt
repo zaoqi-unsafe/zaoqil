@@ -177,3 +177,6 @@
                (eeval e exp)
                (let ([s (car ss)])
                  (loop (hash-set e s (eeval re s)) (cdr ss))))))))))
+
+(define-primitive (macro env args)
+  (macro (eeval env (car args))))
