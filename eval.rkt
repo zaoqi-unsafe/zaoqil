@@ -183,6 +183,9 @@
                    (eeval re s)
                    (error "undefined"))))))
 
+(define-primitive (eval env args)
+  (eeval env (eeval env (car args))))
+
 (define-syntax unlazy*
   (syntax-rules ()
     [(_ () e) e]
