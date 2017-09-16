@@ -136,8 +136,8 @@
       (set-delaye-env! (hash-ref e (car p)) e))
     e))
 
-#| Hash Symbol Any → Record |#
-(struct record (v))
+#| Set Symbol → Env → Record |#
+(struct record (ss env))
 
 (define-primitive (λ env args)
   (unlazy-list
@@ -149,14 +149,9 @@
   (unlazy-list
    args
    (λ (args)
-     (let loop ([xs (mp args)] [r (hash)])
-       (if (null? xs)
-           (record r)
-           (let ([x (car xs)])
-             (unlazy
-              (car x)
-              (λ (s)
-                (loop (cdr xs) (hash-set r s (eeval env (cdr x))))))))))))
+     (let ([ps (mp args)])
+       (let ([ss (map car ps)] [e (mkenv env ps)])
+         (record ss e))))))
 
 (define-syntax-rule (define-primitive-f (f env args) body ...)
   (define-primitive (f env a)
