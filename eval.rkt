@@ -156,7 +156,7 @@
   (func (car args) (cadr args) env))
 
 (define-primitive (record env args)
-  (let ([ps (mp args)])
+  (unlazy* ([ps (mp args)])
     (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
       (record ss e))))
 
