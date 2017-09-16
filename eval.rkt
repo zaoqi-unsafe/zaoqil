@@ -31,7 +31,13 @@
                 (hash-set! forceem x v)
                 v))))
 
-(define (%forcee x) (eeval (delaye-env x) (delaye-exp x)))
+(define (%forcee x)
+  (unlazy
+   (eeval (delaye-env x) (delaye-exp x))
+   (λ (x)
+     (if (delaye? x)
+         (%forcee x)
+         x))))
 
 #| Func → Macro |#
 (struct macro (v))
@@ -96,7 +102,11 @@
    code
    (λ (e)
      (cond
-       [(symbol? e) (hash-ref env e)]
+       [(symbol? e)
+        (let ([x (hash-ref env e)])
+          (cond
+            [(delaye? x) (forcee x)]
+            [else x]))]
        [(pair? e) (eapply env (%eval env (car e)) (cdr e))]
        [(delaye? e) (forcee e)]
        [else e]))))
