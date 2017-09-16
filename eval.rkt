@@ -112,6 +112,12 @@
 #| Hash Symbol Any → Record |#
 (struct record (v))
 
+(define-primitive (λ env args)
+  (unlazy-list
+   args
+   (λ (args)
+     (func (car args) (cadr args) env))))
+
 (define-primitive (record env args)
   (unlazy-list
    args
