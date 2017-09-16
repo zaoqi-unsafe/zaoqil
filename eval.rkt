@@ -108,15 +108,16 @@
   (set! global-env (hash-set global-env s (eprimitive x))))
 
 (define-syntax-rule (define-primitive (f env args) body ...)
-  (%define-primitive (quote f)
-                     (λ (env args)
-                       body ...)))
+  (%define-primitive
+   (quote f)
+   (λ (env args0)
+     (unlazy
+      args0
+      (λ (args)
+        body ...)))))
 
 (define-primitive (quote env args)
-  (unlazy
-   args
-   (λ (args)
-     (car args))))
+  (car args))
 
 (define (mp xs)
   (let loop ([xs xs] [ps '()])
@@ -140,18 +141,12 @@
 (struct record (ss env))
 
 (define-primitive (λ env args)
-  (unlazy-list
-   args
-   (λ (args)
-     (func (car args) (cadr args) env))))
+  (func (car args) (cadr args) env))
 
 (define-primitive (record env args)
-  (unlazy-list
-   args
-   (λ (args)
-     (let ([ps (mp args)])
-       (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
-         (record ss e))))))
+  (let ([ps (mp args)])
+    (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
+      (record ss e))))
 
 (define-syntax-rule (define-primitive-f (f env args) body ...)
   (define-primitive (f env a)
@@ -161,4 +156,12 @@
        (λ (args)
          body ...)))))
 
-(define-primitive-f (open env args) (error))
+(define-primitive (open env args)
+  (let ([r (car args)] [exp (second args)])
+    (let ([rv (eeval env r)])
+      (let ([re (record-env rv)] [ss (set->list (record-ss rv))])
+        (let loop ([e env] [ss ss])
+          (if (null? ss)
+              (eeval e exp)
+              (let ([s (car ss)])
+                (loop (hash-set e s (eeval re s)) (cdr ss)))))))))
