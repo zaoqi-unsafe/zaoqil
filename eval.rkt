@@ -16,8 +16,22 @@
 
 #| Env = Hash Symbol Any |#
 
-#| Symbol → Exp → Func |#
+#| Symbol → Exp → Env → Func |#
 (struct func (arg body env))
+
+#| Env → Exp → DelayE |#
+(struct delaye (env exp))
+
+(define forceem (make-weak-hasheq))
+
+(define (forcee x)
+  (hash-ref forceem x
+            (λ ()
+              (let ([v (%forcee x)])
+                (hash-set! forceem x v)
+                v))))
+
+(define (%forcee x) (eeval (delaye-env x) (delaye-exp x)))
 
 #| Func → Macro |#
 (struct macro (v))
@@ -84,6 +98,7 @@
      (cond
        [(symbol? e) (hash-ref env e)]
        [(pair? e) (eapply env (%eval env (car e)) (cdr e))]
+       [(delaye? e) (forcee e)]
        [else e]))))
 
 (define global-env (hash))
