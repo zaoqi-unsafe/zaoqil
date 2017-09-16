@@ -129,7 +129,7 @@
   (if (null? ps)
       env
       (let ([p (car ps)])
-        (%mkenv (hash-set env (car p) (cdr p)) (cdr ps)))))
+        (%mkenv (hash-set env (car p) (delaye 0 (cdr p))) (cdr ps)))))
 (define (mkenv env ps)
   (let ([e (%mkenv env ps)])
     (for ([p ps])
