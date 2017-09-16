@@ -131,9 +131,11 @@
 
 (define (mp xs)
   (let loop ([xs xs] [ps '()])
-    (if (null? xs)
-        ps
-        (loop (cddr xs) (cons (cons (car xs) (cadr xs)) ps)))))
+    (unlazy* ([xs xs])
+             (if (null? xs)
+                 ps
+                 (unlazy* ([s (car xs)] [d (cdr xs)] [v (car d)] [xs1 (cdr d)])
+                          (loop xs1 (cons (cons s v) ps)))))))
 
 #| Env → [(Symbol,Exp)] → Env |#
 (define (%mkenv env ps)
@@ -175,16 +177,11 @@
 
 (define-primitive (: env args)
   (let ([r (car args)])
-    (unlazy
-     (second args)
-     (λ (s)
-       (unlazy
-        (eeval env r)
-        (λ (rv)
-          (let ([re (record-env rv)] [ss (record-ss rv)])
-            (if (set-member? ss s)
-                (eeval re s)
-                (error "undefined")))))))))
+    (unlazy* ([s (second args)] [rv (eeval env r)])
+             (let ([re (record-env rv)] [ss (record-ss rv)])
+               (if (set-member? ss s)
+                   (eeval re s)
+                   (error "undefined"))))))
 
 (define-syntax unlazy*
   (syntax-rules ()
