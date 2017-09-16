@@ -20,7 +20,7 @@
 (struct func (arg body env))
 
 #| Env → Exp → DelayE |#
-(struct delaye (env exp))
+(struct delaye ([env #:mutable] exp))
 
 (define forceem (make-weak-hasheq))
 
@@ -123,6 +123,18 @@
     (if (null? xs)
         ps
         (loop (cddr xs) (cons (cons (car xs) (cadr xs)) ps)))))
+
+#| Env → [(Symbol,Exp)] → Env |#
+(define (%mkenv env ps)
+  (if (null? ps)
+      env
+      (let ([p (car ps)])
+        (%mkenv (hash-set env (car p) (cdr p)) (cdr ps)))))
+(define (mkenv env ps)
+  (let ([e (%mkenv env ps)])
+    (for ([p ps])
+      (set-delaye-env! (hash-ref e (car p)) e))
+    e))
 
 #| Hash Symbol Any → Record |#
 (struct record (v))
