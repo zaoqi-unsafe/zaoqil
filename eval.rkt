@@ -158,14 +158,6 @@
     (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
       (record ss e))))
 
-(define-syntax-rule (define-primitive-f (f env args) body ...)
-  (define-primitive (f env a)
-    (let ([a2 (lazymap (λ (x) (eeval env x)) a)])
-      (unlazy-list
-       a2
-       (λ (args)
-         body ...)))))
-
 (define-primitive (open env args)
   (let ([r (car args)] [exp (second args)])
     (unlazy
@@ -180,3 +172,16 @@
 
 (define-primitive (macro env args)
   (macro (eeval env (car args))))
+
+(define-primitive (. env args)
+  (let ([r (car args)])
+    (unlazy
+     (second args)
+     (λ (s)
+       (unlazy
+        (eeval env r)
+        (λ (rv)
+          (let ([re (record-env rv)] [ss (record-ss rv)])
+            (if (set-member? ss s)
+                (eeval re s)
+                (error "undefined")))))))))
