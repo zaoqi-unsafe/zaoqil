@@ -101,7 +101,7 @@
        [(delaye? e) (forcee e)]
        [else e]))))
 
-(define global-env (hash))
+(define global-env (hasheq))
 
 #| Symbol → (Env → Exp → b) → Void |#
 (define (%define-primitive s x)
@@ -150,7 +150,7 @@
    args
    (λ (args)
      (let ([ps (mp args)])
-       (let ([ss (map car ps)] [e (mkenv env ps)])
+       (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
          (record ss e))))))
 
 (define-syntax-rule (define-primitive-f (f env args) body ...)
