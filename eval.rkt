@@ -173,7 +173,7 @@
 (define-primitive (macro env args)
   (macro (eeval env (car args))))
 
-(define-primitive (. env args)
+(define-primitive (: env args)
   (let ([r (car args)])
     (unlazy
      (second args)
@@ -185,3 +185,8 @@
             (if (set-member? ss s)
                 (eeval re s)
                 (error "undefined")))))))))
+
+(define-syntax unlazy*
+  (syntax-rules ()
+    [(_ () e) e]
+    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
