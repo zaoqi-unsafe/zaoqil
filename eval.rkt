@@ -249,7 +249,10 @@
   (define-primitive-f (f x ...)
     (unlazy* ([x x] ...) e)))
 
-(define-primitive-f-unlazy (null? x) (null? x))
+(define-syntax-rule (prim (f x ...))
+  (define-primitive-f-unlazy (f x ...) (f x ...)))
+
+(prim (null? x))
 
 (define (load f)
   (set!
@@ -265,5 +268,11 @@
       [else v])))
 
 (define (ceval x) (force* (eeval global-env x)))
+
+(global-env-define 't #t)
+(global-env-define 'f #f)
+(define-primitive-f (if b x y) (unlazy* ([b b]) (if b x y)))
+
+(prim (boolean? x))
 
 (load "prelude.core")
