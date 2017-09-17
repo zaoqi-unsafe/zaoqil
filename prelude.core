@@ -1,3 +1,6 @@
 (record
  id (λ x x)
+ or (λ x (λ y (if x t y)))
+ and (λ x (λ y (if x (if y t f) f)))
+ list? (λ xs (or (null? xs) (list? (cdr xs))))
  )
