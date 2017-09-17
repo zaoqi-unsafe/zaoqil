@@ -265,7 +265,7 @@
 
 (define-primitive-f (cons a d) (cons a d))
 
-(define (load f)
+(define (cload f)
   (set!
    global-env
    (open
@@ -300,4 +300,4 @@
 (define-primitive-f-unlazy (=< x y) (<= x y))
 (define-primitive-f-unlazy (= x y) (equal? x y))
 
-(load "prelude.core")
+(cload "prelude.core")
