@@ -34,7 +34,7 @@
 (define (forcee x)
   (let ([v (delaye+-v x)])
     (if (delaye? v)
-        (let ([v1 (eeval (delaye-env x) (delaye-exp x))])
+        (let ([v1 (eeval (delaye-env v) (delaye-exp v))])
           (set-delaye+-v! x v1)
           v1)
         v)))
@@ -191,3 +191,13 @@
   (syntax-rules ()
     [(_ () e) e]
     [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
+
+(define (load f)
+  (set!
+   global-env
+   (record-env
+    (force+
+     (eeval global-env
+            (read (open-input-file f)))))))
+
+(load "prelude.core")
