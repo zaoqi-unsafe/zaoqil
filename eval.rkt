@@ -165,17 +165,21 @@
         (set-delaye+-v! (env-ref e self) r)
         r))))
 
+#| Env → Record → Env |#
+(define (open env rv)
+  (let ([re (record-env rv)] [ss (set->list (record-ss rv))])
+    (let loop ([e env] [ss ss])
+      (if (null? ss)
+          e
+          (let ([s (car ss)])
+            (loop (env-set e s (eeval re s)) (cdr ss)))))))
+
 (define-primitive (open env args)
   (let ([r (car args)] [exp (second args)])
     (unlazy
      (eeval env r)
      (λ (rv)
-       (let ([re (record-env rv)] [ss (set->list (record-ss rv))])
-         (let loop ([e env] [ss ss])
-           (if (null? ss)
-               (eeval e exp)
-               (let ([s (car ss)])
-                 (loop (env-set e s (eeval re s)) (cdr ss))))))))))
+       (eeval (open env rv) exp)))))
 
 (define-primitive (macro env args)
   (macro (eeval env (car args))))
