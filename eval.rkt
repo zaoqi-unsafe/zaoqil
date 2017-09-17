@@ -174,7 +174,7 @@
       (if (null? ss)
           e
           (let ([s (car ss)])
-            (if (member? record-hide s)
+            (if (set-member? record-hide s)
                 (loop e (cdr ss))
                 (loop (env-set e s (eeval re s)) (cdr ss))))))))
 
@@ -207,7 +207,8 @@
 (define (load f)
   (set!
    global-env
-   (record-env
+   (open
+    global-env
     (force+
      (eeval global-env
             (read (open-input-file f)))))))
