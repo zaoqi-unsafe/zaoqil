@@ -32,12 +32,7 @@
                 v))))
 
 (define (%forcee x)
-  (unlazy
-   (eeval (delaye-env x) (delaye-exp x))
-   (λ (x)
-     (if (delaye? x)
-         (%forcee x)
-         x))))
+  (eeval (delaye-env x) (delaye-exp x)))
 
 #| Func → Macro |#
 (struct macro (v))
