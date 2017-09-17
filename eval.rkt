@@ -215,16 +215,6 @@
   (unlazy* ([p (eeval env (car args))])
            (cdr p)))
 
-(global-env-define
- 'cons
- (eeval
-  global-env
-  `(λ a (λ b (,(λprimitive
-                env
-                args
-                (let ([a (eeval env (car args))] [d (eeval env (second args))])
-                  (cons a d))) a b)))))
-
 (define-syntax-rule (define-primitive-f (f x ...) e)
   (global-env-define
    (quote f)
@@ -242,7 +232,7 @@
                    (let ([x (eeval env x)] ...)
                      e))) (quote x) ...)]
     [(_ (s0 s ...) xs e)
-     (list 'λ s0 (%define-primitive-f (s ...) xs e))]))
+     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
 
 (define-syntax unify
   (syntax-rules ()
@@ -250,6 +240,8 @@
     [(_ (x0 x ...) ys e)
      (let ([x0 (car ys)])
        (unify (x ...) (cdr ys) e))]))
+
+(define-primitive-f (cons a d) (cons a d))
 
 (define (load f)
   (set!
