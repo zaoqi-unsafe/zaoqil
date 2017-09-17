@@ -113,18 +113,21 @@
 
 (define global-env (hasheq))
 
-#| Symbol → (Env → Exp → b) → Void |#
-(define (%define-primitive s x)
-  (set! global-env (env-set global-env s (eprimitive x))))
+(define (global-env-define s x)
+  (set! global-env (env-set global-env s x)))
 
-(define-syntax-rule (define-primitive (f env args) body ...)
-  (%define-primitive
+(define-syntax-rule (define-primitive (f env args) body)
+  (global-env-define
    (quote f)
+   (λprimitive env args body)))
+
+(define-syntax-rule (λprimitive env args body)
+  (eprimitive
    (λ (env args0)
      (unlazy-list
       args0
       (λ (args)
-        body ...)))))
+        body)))))
 
 (define-primitive (quote env args)
   (car args))
@@ -203,6 +206,24 @@
   (syntax-rules ()
     [(_ () e) e]
     [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
+
+(define-primitive (car env args)
+  (unlazy* ([p (eeval env (car args))])
+           (car p)))
+
+(define-primitive (cdr env args)
+  (unlazy* ([p (eeval env (car args))])
+           (cdr p)))
+
+(global-env-define
+ 'cons
+ (eeval
+  global-env
+  `(λ a (λ b (,(λprimitive
+                env
+                args
+                (unlazy* ([a (eeval env (car args))] [d (eeval env (second args))])
+                         (cons a d))) a b)))))
 
 (define (load f)
   (set!
