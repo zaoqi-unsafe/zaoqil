@@ -14,6 +14,8 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+(provide ceval)
+
 #| Env → Symbol → Any → Env |#
 (define env-set hash-set)
 
@@ -243,13 +245,25 @@
 
 (define-primitive-f (cons a d) (cons a d))
 
+(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
+  (define-primitive-f (f x ...)
+    (unlazy* ([x x] ...) e)))
+
+(define-primitive-f-unlazy (null? x) (null? x))
+
 (define (load f)
   (set!
    global-env
    (open
     global-env
-    (force+
-     (eeval global-env
-            (read (open-input-file f)))))))
+    (ceval (read (open-input-file f))))))
+
+(define (force* x)
+  (let ([v (force+ x)])
+    (cond
+      [(pair? v) (cons (force+ (car v)) (force+ (cdr v)))]
+      [else v])))
+
+(define (ceval x) (force* (eeval global-env x)))
 
 (load "prelude.core")
