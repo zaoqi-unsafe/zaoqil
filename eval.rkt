@@ -121,7 +121,7 @@
   (%define-primitive
    (quote f)
    (λ (env args0)
-     (unlazy
+     (unlazy-list
       args0
       (λ (args)
         body ...)))))
@@ -131,11 +131,12 @@
 
 (define (mp xs)
   (let loop ([xs xs] [ps '()])
-    (unlazy* ([xs xs])
-             (if (null? xs)
-                 ps
-                 (unlazy* ([s (car xs)] [d (cdr xs)] [v (car d)] [xs1 (cdr d)])
-                          (loop xs1 (cons (cons s v) ps)))))))
+    (if (null? xs)
+        ps
+        (unlazy
+         (car xs)
+         (λ (s)
+           (loop (cddr xs) (cons (cons s (cadr xs)) ps)))))))
 
 #| Env → [(Symbol,Exp)] → Env |#
 (define (%mkenv env ps)
@@ -156,7 +157,7 @@
   (func (car args) (cadr args) env))
 
 (define-primitive (record env args)
-  (unlazy* ([ps (mp args)])
+  (let ([ps (mp args)])
     (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
       (record ss e))))
 
