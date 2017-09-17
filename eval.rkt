@@ -16,24 +16,24 @@
 
 (provide ceval)
 
-#| Env → Symbol → Any → Env |#
+; Env → Symbol → Any → Env
 (define env-set hash-set)
 
-#| Env → Symbol → Any |#
+; Env → Symbol → Any
 (define env-ref hash-ref)
 
-#| Env = Hash Symbol Any |#
+; Env = Hash Symbol Any
 
-#| Symbol → Exp → Env → Func |#
+; Symbol → Exp → Env → Func
 (struct func (arg body env))
 
-#| Func → Func... |#
+; Func → Func...
 (struct func... (v))
 
-#| Env → Exp → DelayE |#
+; Env → Exp → DelayE
 (struct delaye ([env #:mutable] exp))
 
-#| U Any DelayE → DelayE+ |#
+; U Any DelayE → DelayE+
 (struct delaye+ ([v #:mutable]))
 
 (define (forcee x)
@@ -44,10 +44,10 @@
           v1)
         v)))
 
-#| Func → Macro |#
+; Func → Macro
 (struct macro (v))
 
-#| (Env → Exp → b) → Primitive  |#
+; (Env → Exp → b) → Primitive
 (struct eprimitive (v))
 
 (define (eeval env code) (delay (%eval env code)))
@@ -152,7 +152,7 @@
 
 (define self '_<)
 
-#| Env → [(Symbol,Exp)] → Env |#
+; Env → [(Symbol,Exp)] → Env
 (define (%mkenv env ps)
   (if (null? ps)
       env
@@ -164,7 +164,7 @@
       (set-delaye-env! (delaye+-v (env-ref e (car p))) e))
     e))
 
-#| Set Symbol → Env → Record |#
+; Set Symbol → Env → Record
 (struct record (ss env))
 
 (define-primitive (λ env args)
@@ -182,7 +182,7 @@
 
 (define record-hide (seteq self))
 
-#| Env → Record → Env |#
+; Env → Record → Env
 (define (open env rv)
   (let ([re (record-env rv)] [ss (set->list (record-ss rv))])
     (let loop ([e env] [ss ss])
