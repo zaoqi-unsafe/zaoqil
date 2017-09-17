@@ -138,6 +138,8 @@
          (λ (s)
            (loop (cddr xs) (cons (cons s (cadr xs)) ps)))))))
 
+(define self '_<)
+
 #| Env → [(Symbol,Exp)] → Env |#
 (define (%mkenv env ps)
   (if (null? ps)
@@ -145,7 +147,7 @@
       (let ([p (car ps)])
         (%mkenv (env-set env (car p) (delaye+ (delaye 0 (cdr p)))) (cdr ps)))))
 (define (mkenv env ps)
-  (let ([e (%mkenv env ps)])
+  (let ([e (env-set (%mkenv env ps) self (delaye+ (void)))])
     (for ([p ps])
       (set-delaye-env! (delaye+-v (env-ref e (car p))) e))
     e))
@@ -159,7 +161,9 @@
 (define-primitive (record env args)
   (let ([ps (mp args)])
     (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
-      (record ss e))))
+      (let ([r (record ss e)])
+        (set-delaye+-v! (env-ref e self) r)
+        r))))
 
 (define-primitive (open env args)
   (let ([r (car args)] [exp (second args)])
