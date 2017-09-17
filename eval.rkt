@@ -165,6 +165,8 @@
         (set-delaye+-v! (env-ref e self) r)
         r))))
 
+(define record-hide (seteq self))
+
 #| Env → Record → Env |#
 (define (open env rv)
   (let ([re (record-env rv)] [ss (set->list (record-ss rv))])
@@ -172,7 +174,9 @@
       (if (null? ss)
           e
           (let ([s (car ss)])
-            (loop (env-set e s (eeval re s)) (cdr ss)))))))
+            (if (member? record-hide s)
+                (loop e (cdr ss))
+                (loop (env-set e s (eeval re s)) (cdr ss))))))))
 
 (define-primitive (open env args)
   (let ([r (car args)] [exp (second args)])
