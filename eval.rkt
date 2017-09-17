@@ -252,8 +252,6 @@
 (define-syntax-rule (prim (f x ...))
   (define-primitive-f-unlazy (f x ...) (f x ...)))
 
-(prim (null? x))
-
 (define (load f)
   (set!
    global-env
@@ -274,5 +272,18 @@
 (define-primitive-f (if b x y) (unlazy* ([b b]) (if b x y)))
 
 (prim (boolean? x))
+(prim (null? x))
+(prim (+ x y))
+(prim (- x y))
+(prim (* x y))
+(prim (/ x y))
+(prim (or x y))
+(prim (not x))
+(prim (and x y))
+(prim (< x y))
+(prim (> x y))
+(prim (>= x y))
+(define-primitive-f-unlazy (=< x y) (<= x y))
+(define-primitive-f-unlazy (= x y) (equal? x y))
 
 (load "prelude.core")
