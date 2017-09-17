@@ -14,6 +14,12 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#| Env → Symbol → Any → Env |#
+(define env-set hash-set)
+
+#| Env → Symbol → Any |#
+(define env-ref hash-ref)
+
 #| Env = Hash Symbol Any |#
 
 #| Symbol → Exp → Env → Func |#
@@ -22,17 +28,16 @@
 #| Env → Exp → DelayE |#
 (struct delaye ([env #:mutable] exp))
 
-(define forceem (make-weak-hasheq))
+#| U Any DelayE → DelayE+ |#
+(struct delaye+ ([v #:mutable]))
 
 (define (forcee x)
-  (hash-ref forceem x
-            (λ ()
-              (let ([v (%forcee x)])
-                (hash-set! forceem x v)
-                v))))
-
-(define (%forcee x)
-  (eeval (delaye-env x) (delaye-exp x)))
+  (let ([v (delaye+-v x)])
+    (if (delaye? v)
+        (let ([v1 (eeval (delaye-env x) (delaye-exp x))])
+          (set-delaye+-v! x v1)
+          v1)
+        v)))
 
 #| Func → Macro |#
 (struct macro (v))
@@ -84,7 +89,7 @@
             (unlazy args
                     (λ (as)
                       (let ([v (eeval
-                                (hash-set e arg (eeval env (car as)))
+                                (env-set e arg (eeval env (car as)))
                                 body)])
                         (unlazy (cdr as)
                                 (λ (d)
@@ -98,19 +103,19 @@
    (λ (e)
      (cond
        [(symbol? e)
-        (let ([x (hash-ref env e)])
+        (let ([x (env-ref env e)])
           (cond
-            [(delaye? x) (forcee x)]
+            [(delaye+? x) (forcee x)]
             [else x]))]
        [(pair? e) (eapply env (%eval env (car e)) (cdr e))]
-       [(delaye? e) (forcee e)]
+       [(delaye+? e) (forcee e)]
        [else e]))))
 
 (define global-env (hasheq))
 
 #| Symbol → (Env → Exp → b) → Void |#
 (define (%define-primitive s x)
-  (set! global-env (hash-set global-env s (eprimitive x))))
+  (set! global-env (env-set global-env s (eprimitive x))))
 
 (define-syntax-rule (define-primitive (f env args) body ...)
   (%define-primitive
@@ -137,11 +142,11 @@
   (if (null? ps)
       env
       (let ([p (car ps)])
-        (%mkenv (hash-set env (car p) (delaye 0 (cdr p))) (cdr ps)))))
+        (%mkenv (env-set env (car p) (delaye+ (delaye 0 (cdr p)))) (cdr ps)))))
 (define (mkenv env ps)
   (let ([e (%mkenv env ps)])
     (for ([p ps])
-      (set-delaye-env! (hash-ref e (car p)) e))
+      (set-delaye-env! (delaye+-v (env-ref e (car p))) e))
     e))
 
 #| Set Symbol → Env → Record |#
@@ -165,7 +170,7 @@
            (if (null? ss)
                (eeval e exp)
                (let ([s (car ss)])
-                 (loop (hash-set e s (eeval re s)) (cdr ss))))))))))
+                 (loop (env-set e s (eeval re s)) (cdr ss))))))))))
 
 (define-primitive (macro env args)
   (macro (eeval env (car args))))
