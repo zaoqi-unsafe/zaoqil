@@ -27,6 +27,9 @@
 #| Symbol → Exp → Env → Func |#
 (struct func (arg body env))
 
+#| Func → Func... |#
+(struct func... (v))
+
 #| Env → Exp → DelayE |#
 (struct delaye ([env #:mutable] exp))
 
@@ -86,6 +89,7 @@
        (cond
          [(eprimitive? f) ((eprimitive-v f) env args)]
          [(macro? f) (eeval (eapply env (macro-v f) (lazymap (λ (x) (list 'quote x)) args)))]
+         [(func...? f) (eapply env (func...-v f) (list (cons 'list args)))]
          [else
           (let ([arg (func-arg f)] [body (func-body f)] [e (func-env f)])
             (unlazy args
@@ -134,6 +138,9 @@
 (define-primitive (quote env args)
   (car args))
 
+(define-primitive (list env args)
+  (map (λ (x) (eeval env x)) args))
+
 (define (mp xs)
   (let loop ([xs xs] [ps '()])
     (if (null? xs)
@@ -162,6 +169,9 @@
 
 (define-primitive (λ env args)
   (func (car args) (cadr args) env))
+
+(define-primitive (λ... env args)
+  (func... (func (car args) (cadr args) env)))
 
 (define-primitive (record env args)
   (let ([ps (mp args)])
