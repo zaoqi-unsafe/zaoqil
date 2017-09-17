@@ -14,6 +14,60 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+(define true #t)
+(define false #f)
+
+(define-syntax unlazy*
+  (syntax-rules ()
+    [(_ () e) e]
+    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
+
+(define-syntax-rule (λprimitive env args body)
+  (eprimitive
+   (λ (env args0)
+     (unlazy-list
+      args0
+      (λ (args)
+        body)))))
+
+(define-syntax-rule (define-primitive (f env args) body)
+  (global-env-define
+   (quote f)
+   (λprimitive env args body)))
+
+(define-syntax-rule (define-primitive-f (f x ...) e)
+  (global-env-define
+   (quote f)
+   (eeval
+    global-env
+    (%define-primitive-f (x ...) (x ...) e))))
+
+(define-syntax %define-primitive-f
+  (syntax-rules ()
+    [(_ () (x ...) e)
+     (list (λprimitive
+            env
+            args
+            (unify (x ...) args
+                   (let ([x (eeval env x)] ...)
+                     e))) (quote x) ...)]
+    [(_ (s0 s ...) xs e)
+     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
+
+(define-syntax unify
+  (syntax-rules ()
+    [(_ () nil e) e]
+    [(_ (x0 x ...) ys e)
+     (let ([x0 (car ys)])
+       (unify (x ...) (cdr ys) e))]))
+
+(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
+  (define-primitive-f (f x ...)
+    (unlazy* ([x x] ...) e)))
+
+(define-syntax-rule (prim (f x ...))
+  (define-primitive-f-unlazy (f x ...) (f x ...)))
+
 (provide ceval)
 
 ; Env → Symbol → Any → Env
@@ -122,19 +176,6 @@
 (define (global-env-define s x)
   (set! global-env (env-set global-env s x)))
 
-(define-syntax-rule (define-primitive (f env args) body)
-  (global-env-define
-   (quote f)
-   (λprimitive env args body)))
-
-(define-syntax-rule (λprimitive env args body)
-  (eprimitive
-   (λ (env args0)
-     (unlazy-list
-      args0
-      (λ (args)
-        body)))))
-
 (define-primitive (quote env args)
   (car args))
 
@@ -214,11 +255,6 @@
 (define-primitive (eval env args)
   (eeval env (eeval env (car args))))
 
-(define-syntax unlazy*
-  (syntax-rules ()
-    [(_ () e) e]
-    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
-
 (define-primitive (car env args)
   (unlazy* ([p (eeval env (car args))])
            (car p)))
@@ -227,40 +263,7 @@
   (unlazy* ([p (eeval env (car args))])
            (cdr p)))
 
-(define-syntax-rule (define-primitive-f (f x ...) e)
-  (global-env-define
-   (quote f)
-   (eeval
-    global-env
-    (%define-primitive-f (x ...) (x ...) e))))
-
-(define-syntax %define-primitive-f
-  (syntax-rules ()
-    [(_ () (x ...) e)
-     (list (λprimitive
-            env
-            args
-            (unify (x ...) args
-                   (let ([x (eeval env x)] ...)
-                     e))) (quote x) ...)]
-    [(_ (s0 s ...) xs e)
-     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
-
-(define-syntax unify
-  (syntax-rules ()
-    [(_ () nil e) e]
-    [(_ (x0 x ...) ys e)
-     (let ([x0 (car ys)])
-       (unify (x ...) (cdr ys) e))]))
-
 (define-primitive-f (cons a d) (cons a d))
-
-(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
-  (define-primitive-f (f x ...)
-    (unlazy* ([x x] ...) e)))
-
-(define-syntax-rule (prim (f x ...))
-  (define-primitive-f-unlazy (f x ...) (f x ...)))
 
 (define (load f)
   (set!
@@ -277,8 +280,8 @@
 
 (define (ceval x) (force* (eeval global-env x)))
 
-(global-env-define 't #t)
-(global-env-define 'f #f)
+(global-env-define 't true)
+(global-env-define 'f false)
 (define-primitive-f (if b x y) (unlazy* ([b b]) (if b x y)))
 (prim (boolean? x))
 (prim (null? x))
