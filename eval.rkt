@@ -262,7 +262,7 @@
 (define (force* x)
   (let ([v (force+ x)])
     (cond
-      [(pair? v) (cons (force+ (car v)) (force+ (cdr v)))]
+      [(pair? v) (cons (force* (car v)) (force* (cdr v)))]
       [else v])))
 
 (define (ceval x) (force* (eeval global-env x)))
