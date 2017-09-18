@@ -61,7 +61,8 @@
   (define-primitive-f (f x ...)
     (unlazy* ([x x] ...) e)))
 
-(define-syntax-rule (prim (f x ...))
-  (define-primitive-f-unlazy (f x ...) (f x ...)))
+(defmacro! prim
+  (fn* (l)
+       `(define-primitive-f-unlazy ~l ~l)))
 
 (define (readfile f) (read-string (slurp f)))
