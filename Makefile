@@ -1,5 +1,9 @@
 SOURCES = eval.lisp
 
-eval.rkt: head.rkt $(SOURCES)
-	cat $< > $@
-	cat $(SOURCES) >> $@
+all: eval.rkt
+
+eval.%: head.% $(SOURCES) tail.%
+	> $@
+	cat $^ >> $@
+
+

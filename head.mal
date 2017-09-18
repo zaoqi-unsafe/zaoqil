@@ -1,0 +1,67 @@
+;;  Copyright (C) 2017  Zaoqi
+
+;;  This program is free software: you can redistribute it and/or modify
+;;  it under the terms of the GNU Affero General Public License as published
+;;  by the Free Software Foundation, either version 3 of the License, or
+;;  (at your option) any later version.
+
+;;  This program is distributed in the hope that it will be useful,
+;;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;  GNU Affero General Public License for more details.
+
+;;  You should have received a copy of the GNU Affero General Public License
+;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+(define-syntax unlazy*
+  (syntax-rules ()
+    [(_ () e) e]
+    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
+
+(define-syntax-rule (λprimitive env args body)
+  (eprimitive
+   (λ (env args0)
+     (unlazy-list
+      args0
+      (λ (args)
+        body)))))
+
+(define-syntax-rule (define-primitive (f env args) body)
+  (global-env-define
+   (quote f)
+   (λprimitive env args body)))
+
+(define-syntax-rule (define-primitive-f (f x ...) e)
+  (global-env-define
+   (quote f)
+   (eeval
+    global-env
+    (%define-primitive-f (x ...) (x ...) e))))
+
+(define-syntax %define-primitive-f
+  (syntax-rules ()
+    [(_ () (x ...) e)
+     (list (λprimitive
+            env
+            args
+            (unify (x ...) args
+                   (let ([x (eeval env x)] ...)
+                     e))) (quote x) ...)]
+    [(_ (s0 s ...) xs e)
+     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
+
+(define-syntax unify
+  (syntax-rules ()
+    [(_ () nil e) e]
+    [(_ (x0 x ...) ys e)
+     (let ([x0 (car ys)])
+       (unify (x ...) (cdr ys) e))]))
+
+(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
+  (define-primitive-f (f x ...)
+    (unlazy* ([x x] ...) e)))
+
+(define-syntax-rule (prim (f x ...))
+  (define-primitive-f-unlazy (f x ...) (f x ...)))
+
+(define (readfile f) (read (open-input-file f)))

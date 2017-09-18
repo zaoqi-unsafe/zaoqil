@@ -1,4 +1,5 @@
 *.rkt~
 compiled
-*.core~
 *.lisp~
+*.mal~
+*.core~
