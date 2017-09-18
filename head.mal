@@ -66,3 +66,6 @@
        `(define-primitive-f-unlazy ~l ~l)))
 
 (define (readfile f) (read-string (slurp f)))
+
+(scheme
+
