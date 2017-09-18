@@ -1,8 +1,8 @@
 SOURCES = eval.lisp
 
-all: eval.rkt
+all: eval.rkt eval.mal
 
-eval.%: head.% $(SOURCES) tail.%
+eval.%: head*.% $(SOURCES) tail.%
 	> $@
 	cat $^ >> $@
 
