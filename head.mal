@@ -64,4 +64,4 @@
 (define-syntax-rule (prim (f x ...))
   (define-primitive-f-unlazy (f x ...) (f x ...)))
 
-(define (readfile f) (read (open-input-file f)))
+(define (readfile f) (read-string (slurp f)))
