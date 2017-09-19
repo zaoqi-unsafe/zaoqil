@@ -50,16 +50,17 @@
     [(_ (s0 s ...) xs e)
      (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
 
-(define-syntax unify
-  (syntax-rules ()
-    [(_ () nil e) e]
-    [(_ (x0 x ...) ys e)
-     (let ([x0 (car ys)])
-       (unify (x ...) (cdr ys) e))]))
+(defmacro! unify
+  (fn* (vs xs e)
+       (if (null? vs)
+           e
+           `(let ([~(car vs) (car ~xs)])
+              (unify ~(cdr vs) (cdr ~xs) ~e)))))
 
-(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
-  (define-primitive-f (f x ...)
-    (unlazy* ([x x] ...) e)))
+(defmacro! define-primitive-f-unlazy
+  (fn* (fxs e)
+       `(define-primitive-f ~fxs
+          (unlazy* ~(map (λ (x) (list x x)) (rest fxs)) ~e))))
 
 (defmacro! prim
   (fn* (l)
