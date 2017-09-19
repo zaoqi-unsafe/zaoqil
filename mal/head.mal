@@ -13,10 +13,12 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-syntax unlazy*
-  (syntax-rules ()
-    [(_ () e) e]
-    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
+(defmacro! unlazy*
+  (fn* (xvs e)
+       (if (null? xvs)
+           e
+           (let ([xv (car xvs)])
+             `(unlazy ~(car (cdr xs)) (λ (~(car xv)) (unlazy* ~(cdr xvs) ~e)))))))
 
 (defmacro! λprimitive
   (fn* (env args body)
