@@ -77,29 +77,28 @@
 
 (defmacro! struct
   (fn* (id rfs)
-       (let* (fs (cm id rfs 1) is (symbol (str id "?")))
+       (let* (fs (cm id rfs 1) isit (symbol (str id "?")) ss (map (fn* (x) (nth x 1)) fs))
          (concat
           `(do
                (def! ~id
-                 (fn* (& xs)
-                      (apply vector (cons (quote ~id) (map atom xs)))))
-             (def! ~is
+                 (fn* ~ss
+                      (vector (quote ~id) ~@(map (λ (x) (list 'atom x)) ss))))
+             (def! ~isit
                (fn* (s)
                     (and (vector? s) (= (count s) ~(+ (count fs) 1)) (= (nth s 0) (quote ~id))))))
           (map (fn* (x)
                     `(def! ~(symbol (str "set-" (nth x 1) "!"))
                        (fn* (s v)
-                            (if (~is s)
+                            (if (~isit s)
                                 (reset! (nth s ~(nth x 0)) v)
-                                (throw "struct type error"))))
-                    fs))
+                                (throw "type error")))))
+               fs)
           (map (fn* (x)
                     `(def! ~(nth x 1)
                        (fn* (s)
-                            (if (~is s)
+                            (if (~isit s)
                                 (deref (nth s ~(nth x 0)))
-                                (throw "struct type error"))
-                            )))
+                                (throw "type error")))))
                fs)))))
 
 (define clist? list?)
@@ -170,7 +169,7 @@
     (if (del/namev? v)
         (let ([v1 (force/name v)])
           (set-del+v-v! x v1)
-          v1)
+          x)
         v)))
 (define (force x)
   (if (del/namev? x) (force/name x)
