@@ -3,3 +3,4 @@ compiled
 *.lisp~
 *.mal~
 *.core~
+*.scm~
