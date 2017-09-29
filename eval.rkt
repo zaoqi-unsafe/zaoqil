@@ -35,7 +35,7 @@
       (cons (tprimitive (λ (env args) (apply x args))) (reverse ss))
       (let ([s (gensym)])
         (list 'λ s (%defprim-f (- 1 n) (cons s ss) x)))))
-(define (defprim-f-unlazy f x)
+(define (prim-f f x)
   (global-env-define f (%defprim-f (procedure-arity x) '()
                                    (λ xs (unlazy* xs (λ (xs) (apply x xs)))))))
 
@@ -49,39 +49,6 @@
           (cdr xs)
           (λ (d)
             (f (cons a d))))))))
-
-;(define-syntax-rule (define-primitive-f (f x ...) e)
-;  (global-env-define
-;   (quote f)
-;   (eeval
-;    global-env
-;    (%define-primitive-f (x ...) (x ...) e))))
-
-;(define-syntax %define-primitive-f
-;  (syntax-rules ()
-;    [(_ () (x ...) e)
-;     (list (λprimitive
-;            env
-;            args
-;            (unify (x ...) args
-;                   (let ([x (eeval env x)] ...)
-;                     e))) (quote x) ...)]
-;    [(_ (s0 s ...) xs e)
-;     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
-
-;(define-syntax unify
-;  (syntax-rules ()
-;    [(_ () nil e) e]
-;    [(_ (x0 x ...) ys e)
-;     (let ([x0 (car ys)])
-;       (unify (x ...) (cdr ys) e))]))
-
-;(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
-;  (define-primitive-f (f x ...)
-;    (unlazy* ([x x] ...) e)))
-
-;(define-syntax-rule (prim (f x ...))
-;  (define-primitive-f-unlazy (f x ...) (f x ...)))
 
 (define (readfile f) (read (open-input-file f)))
 
@@ -303,21 +270,21 @@
 (global-env-define 't true)
 (global-env-define 'f false)
 (defprim-f 'if (λ (c x y) (unlazy c (λ (b) (if b x y)))))
-(prim (boolean? x))
-(prim (null? x))
-(prim (char? x))
-(prim (pair? x))
-(prim (symbol? x))
-(prim (record? x))
-(prim (+ x y))
-(prim (- x y))
-(prim (* x y))
-(prim (/ x y))
-(prim (not x))
-(prim (< x y))
-(prim (> x y))
-(prim (>= x y))
-(define-primitive-f-unlazy (=< x y) (<= x y))
-(define-primitive-f-unlazy (= x y) (equal? x y))
+(prim-f 'boolean? boolean?)
+(prim-f 'null? null?)
+(prim-f 'char? char?)
+(prim-f 'pair? pair?)
+(prim-f 'symbol? symbol?)
+(prim-f 'record? record?)
+(prim-f '+ (λ (x y) (+ x y)))
+(prim-f '- (λ (x y) (- x y)))
+(prim-f '* (λ (x y) (* x y)))
+(prim-f '/ (λ (x y) (/ x y)))
+(prim-f 'not not)
+(prim-f '< (λ (x y) (< x y)))
+(prim-f '> (λ (x y) (> x y)))
+(prim-f '>= (λ (x y) (>= x y)))
+(prim-f '=< (λ (x y) (<= x y)))
+(prim-f '= (λ (x y) (equal? x y)))
 
 (cload "prelude.core")
