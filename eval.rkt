@@ -34,7 +34,7 @@
   (if (zero? n)
       (cons (tprimitive (λ (env args) (apply x args))) (reverse ss))
       (let ([s (gensym)])
-        (list 'λ s (%defprim-f (- 1 n) (cons s ss) x)))))
+        (list 'λ s (%defprim-f (- n 1) (cons s ss) x)))))
 (define (prim-f f x)
   (global-env-define f (%defprim-f (procedure-arity x) '()
                                    (λ xs (unlazy* xs (λ (xs) (apply x xs)))))))
