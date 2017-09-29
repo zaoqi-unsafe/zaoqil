@@ -252,12 +252,12 @@
 (defprim 'car (λ (env args) (unlazy (eeval env (car args)) car)))
 (defprim 'cdr (λ (env args) (unlazy (eeval env (car args)) cdr)))
 
-(define (cload f)
+(define (cload xs)
   (set!
    global-env
    (open
     global-env
-    (ceval (readfile f)))))
+    (ceval xs))))
 
 (define (force* x)
   (let ([v (force+ x)])
@@ -287,4 +287,13 @@
 (prim-f '=< (λ (x y) (<= x y)))
 (prim-f '= (λ (x y) (equal? x y)))
 
-(cload "prelude.core")
+(cload (readsexp "prelude.core"))
+
+(define-syntax-rule (readsexp f)
+  (include/reader
+   f
+   (λ (source-name in)
+     (let ([x (read in)])
+       (if (eof-object? x)
+           eof
+           (datum->syntax #f (list 'quote x)))))))
