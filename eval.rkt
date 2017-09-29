@@ -13,27 +13,26 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+(provide ceval)
 
 (define true #t)
 (define false #f)
 
-(define-syntax unlazy*
-  (syntax-rules ()
-    [(_ () e) e]
-    [(_ ([x v] y ...) e) (unlazy v (λ (x) (unlazy* (y ...) e)))]))
-
-(define-syntax-rule (λprimitive env args body)
+(define (tprimitive f)
   (eprimitive
    (λ (env args0)
      (unlazy-list
       args0
       (λ (args)
-        body)))))
+        (f env args))))))
 
-(define-syntax-rule (define-primitive (f env args) body)
-  (global-env-define
-   (quote f)
-   (λprimitive env args body)))
+(define (defprim f x)
+  (global-env-define f (tprimitive x)))
+
+;(define-syntax-rule (define-primitive (f env args) body)
+;  (global-env-define
+;   (quote f)
+;   (λprimitive env args body)))
 
 (define-syntax-rule (define-primitive-f (f x ...) e)
   (global-env-define
@@ -69,22 +68,6 @@
   (define-primitive-f-unlazy (f x ...) (f x ...)))
 
 (define (readfile f) (read (open-input-file f)))
-
-(provide ceval)
-;;  Copyright (C) 2017  Zaoqi
-
-;;  This program is free software: you can redistribute it and/or modify
-;;  it under the terms of the GNU Affero General Public License as published
-;;  by the Free Software Foundation, either version 3 of the License, or
-;;  (at your option) any later version.
-
-;;  This program is distributed in the hope that it will be useful,
-;;  but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;  GNU Affero General Public License for more details.
-
-;;  You should have received a copy of the GNU Affero General Public License
-;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ; Env → Symbol → Any → Env
 (define env-set hash-set)
@@ -192,11 +175,11 @@
 (define (global-env-define s x)
   (set! global-env (env-set global-env s x)))
 
-(define-primitive (quote env args)
-  (car args))
+(defprim 'quote (λ (env args)
+                  (car args)))
 
-(define-primitive (list env args)
-  (map (λ (x) (eeval env x)) args))
+(defprim 'list (λ (env args)
+                 (map (λ (x) (eeval env x)) args)))
 
 (define (mp xs)
   (let loop ([xs xs] [ps '()])
@@ -224,18 +207,21 @@
 ; Set Symbol → Env → Record
 (struct record (ss env))
 
-(define-primitive (λ env args)
-  (func (car args) (cadr args) env))
+(defprim 'λ
+  (λ (env args)
+    (func (car args) (cadr args) env)))
 
-(define-primitive (λ... env args)
-  (func... (func (car args) (cadr args) env)))
+(defprim 'λ...
+  (λ (env args)
+    (func... (func (car args) (cadr args) env))))
 
-(define-primitive (record env args)
-  (let ([ps (mp args)])
-    (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
-      (let ([r (record ss e)])
-        (set-delaye+-v! (env-ref e self) r)
-        r))))
+(defprim 'record
+  (λ (env args)
+    (let ([ps (mp args)])
+      (let ([ss (list->seteq (map car ps))] [e (mkenv env ps)])
+        (let ([r (record ss e)])
+          (set-delaye+-v! (env-ref e self) r)
+          r)))))
 
 (define record-hide (seteq self))
 
@@ -262,22 +248,23 @@
 
 (define-primitive (: env args)
   (let ([r (car args)])
-    (unlazy* ([s (second args)] [rv (eeval env r)])
-             (let ([re (record-env rv)] [ss (record-ss rv)])
-               (if (set-member? ss s)
-                   (eeval re s)
-                   (error "undefined"))))))
+    (unlazy
+     (second args)
+     (λ (s)
+       (unlazy
+        (eeval env r)
+        (λ (rv)
+          (let ([re (record-env rv)] [ss (record-ss rv)])
+            (if (set-member? ss s)
+                (eeval re s)
+                (error "undefined")))))))))
 
 (define-primitive (eval env args)
   (eeval env (eeval env (car args))))
 
-(define-primitive (car env args)
-  (unlazy* ([p (eeval env (car args))])
-           (car p)))
+(define-primitive (car env args) (unlazy (eeval env (car args)) car))
 
-(define-primitive (cdr env args)
-  (unlazy* ([p (eeval env (car args))])
-           (cdr p)))
+(define-primitive (cdr env args) (unlazy (eeval env (car args)) cdr))
 
 (define-primitive-f (cons a d) (cons a d))
 
@@ -298,7 +285,7 @@
 
 (global-env-define 't true)
 (global-env-define 'f false)
-(define-primitive-f (if b x y) (unlazy* ([b b]) (if b x y)))
+(define-primitive-f (if c x y) (unlazy c (λ (b) (if b x y))))
 (prim (boolean? x))
 (prim (null? x))
 (prim (char? x))
