@@ -29,43 +29,59 @@
 (define (defprim f x)
   (global-env-define f (tprimitive x)))
 
-;(define-syntax-rule (define-primitive (f env args) body)
+(define (defprim-f f x) (global-env-define f (%defprim-f (procedure-arity x) '() x)))
+(define (%defprim-f n ss x)
+  (if (zero? n)
+      (cons (tprimitive (λ (env args) (apply x args))) (reverse ss))
+      (let ([s (gensym)])
+        (list 'λ s (%defprim-f (- 1 n) (cons s ss) x)))))
+(define (defprim-f-unlazy f x)
+  (global-env-define f (%defprim-f (procedure-arity x) '()
+                                   (λ xs (unlazy* xs (λ (xs) (apply x xs)))))))
+
+(define (unlazy* xs f)
+  (if (null? xs)
+      (f '())
+      (unlazy
+       (car xs)
+       (λ (a)
+         (unlazy*
+          (cdr xs)
+          (λ (d)
+            (f (cons a d))))))))
+
+;(define-syntax-rule (define-primitive-f (f x ...) e)
 ;  (global-env-define
 ;   (quote f)
-;   (λprimitive env args body)))
+;   (eeval
+;    global-env
+;    (%define-primitive-f (x ...) (x ...) e))))
 
-(define-syntax-rule (define-primitive-f (f x ...) e)
-  (global-env-define
-   (quote f)
-   (eeval
-    global-env
-    (%define-primitive-f (x ...) (x ...) e))))
+;(define-syntax %define-primitive-f
+;  (syntax-rules ()
+;    [(_ () (x ...) e)
+;     (list (λprimitive
+;            env
+;            args
+;            (unify (x ...) args
+;                   (let ([x (eeval env x)] ...)
+;                     e))) (quote x) ...)]
+;    [(_ (s0 s ...) xs e)
+;     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
 
-(define-syntax %define-primitive-f
-  (syntax-rules ()
-    [(_ () (x ...) e)
-     (list (λprimitive
-            env
-            args
-            (unify (x ...) args
-                   (let ([x (eeval env x)] ...)
-                     e))) (quote x) ...)]
-    [(_ (s0 s ...) xs e)
-     (list 'λ (quote s0) (%define-primitive-f (s ...) xs e))]))
+;(define-syntax unify
+;  (syntax-rules ()
+;    [(_ () nil e) e]
+;    [(_ (x0 x ...) ys e)
+;     (let ([x0 (car ys)])
+;       (unify (x ...) (cdr ys) e))]))
 
-(define-syntax unify
-  (syntax-rules ()
-    [(_ () nil e) e]
-    [(_ (x0 x ...) ys e)
-     (let ([x0 (car ys)])
-       (unify (x ...) (cdr ys) e))]))
+;(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
+;  (define-primitive-f (f x ...)
+;    (unlazy* ([x x] ...) e)))
 
-(define-syntax-rule (define-primitive-f-unlazy (f x ...) e)
-  (define-primitive-f (f x ...)
-    (unlazy* ([x x] ...) e)))
-
-(define-syntax-rule (prim (f x ...))
-  (define-primitive-f-unlazy (f x ...) (f x ...)))
+;(define-syntax-rule (prim (f x ...))
+;  (define-primitive-f-unlazy (f x ...) (f x ...)))
 
 (define (readfile f) (read (open-input-file f)))
 
@@ -262,14 +278,12 @@
                   (eeval re s)
                   (error "undefined"))))))))))
 
-(define-primitive (eval env args)
-  (eeval env (eeval env (car args))))
+(defprim 'eval
+  (λ (env args) (eeval env (eeval env (car args)))))
 
-(define-primitive (car env args) (unlazy (eeval env (car args)) car))
-
-(define-primitive (cdr env args) (unlazy (eeval env (car args)) cdr))
-
-(define-primitive-f (cons a d) (cons a d))
+(defprim-f 'cons cons)
+(defprim 'car (λ (env args) (unlazy (eeval env (car args)) car)))
+(defprim 'cdr (λ (env args) (unlazy (eeval env (car args)) cdr)))
 
 (define (cload f)
   (set!
@@ -288,7 +302,7 @@
 
 (global-env-define 't true)
 (global-env-define 'f false)
-(define-primitive-f (if c x y) (unlazy c (λ (b) (if b x y))))
+(defprim-f 'if (λ (c x y) (unlazy c (λ (b) (if b x y)))))
 (prim (boolean? x))
 (prim (null? x))
 (prim (char? x))
