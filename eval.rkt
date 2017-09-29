@@ -236,28 +236,31 @@
                 (loop e (cdr ss))
                 (loop (env-set e s (eeval re s)) (cdr ss))))))))
 
-(define-primitive (open env args)
-  (let ([r (car args)] [exp (second args)])
-    (unlazy
-     (eeval env r)
-     (λ (rv)
-       (eeval (open env rv) exp)))))
+(defprim 'open
+  (λ (env args)
+    (let ([r (car args)] [exp (second args)])
+      (unlazy
+       (eeval env r)
+       (λ (rv)
+         (eeval (open env rv) exp))))))
 
-(define-primitive (macro env args)
-  (macro (eeval env (car args))))
+(defprim 'macro
+  (λ (env args)
+    (macro (eeval env (car args)))))
 
-(define-primitive (: env args)
-  (let ([r (car args)])
-    (unlazy
-     (second args)
-     (λ (s)
-       (unlazy
-        (eeval env r)
-        (λ (rv)
-          (let ([re (record-env rv)] [ss (record-ss rv)])
-            (if (set-member? ss s)
-                (eeval re s)
-                (error "undefined")))))))))
+(defprim ':
+  (λ (env args)
+    (let ([r (car args)])
+      (unlazy
+       (second args)
+       (λ (s)
+         (unlazy
+          (eeval env r)
+          (λ (rv)
+            (let ([re (record-env rv)] [ss (record-ss rv)])
+              (if (set-member? ss s)
+                  (eeval re s)
+                  (error "undefined"))))))))))
 
 (define-primitive (eval env args)
   (eeval env (eeval env (car args))))
