@@ -14,6 +14,7 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+(provide ceval)
 (define-syntax-rule (file->sexp f)
   (include/reader
    f
