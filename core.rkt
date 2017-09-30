@@ -120,6 +120,7 @@
   (cond
     [(promise? x) (delay (from-racket-value (force x)))]
     [(procedure? x) (to-func x)]
+    [(hash? x) (record x)];需修复： 可能不是Hash Symbol Any
     [else x]))
 
 (define (to-racket-value x)
@@ -181,6 +182,9 @@
 
 (define fold foldl)
 
+(define (env-append env ps)
+  (fold (λ (p env) (envset env (car p) (cdr p))) env ps))
+
 (define genv
   (env
    'quote (primm
@@ -227,8 +231,7 @@
                                  (f (cons (cons s (cadr xs)) d))))))))
               (define newenv
                 (delay
-                  (let ([rc (force+ rc)])
-                    (fold (λ (p env) (envset env (car p) (cdr p))) env rc))))
+                  (env-append env (force+ rc))))
               (define rc
                 (delay
                   (mkpair
@@ -241,6 +244,24 @@
               (unlazy
                rc
                (λ (rc)
-                 (record (make-immutable-hasheq rc))))))))
+                 (record (make-immutable-hasheq rc))))))
+   'open (primm
+          2
+          (λ (env r x)
+            (unlazy
+             (eeval env r)
+             (λ (r)
+               (eeval (env-append env (hash->list (record-v r))) x)))))
+   ': (primm
+       2
+       (λ (env r x)
+         (unlazy
+          (eeval env r)
+          (λ (r)
+            (unlazy
+             x
+             (λ (s)
+               (hash-ref (record-v r) s)))))))
+   ))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
