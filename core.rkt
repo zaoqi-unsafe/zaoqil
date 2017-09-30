@@ -161,6 +161,19 @@
        'cons (primf 2 cons)
        'car (primp 2 car)
        'cdr (primp 2 cdr)
-       'symbol? (primp 1 symbol?)))
+       'true true
+       'false false
+       'boolean? (primp 1 boolean?)
+       'pair? (primp 1 pair?)
+       'symbol? (primp 1 symbol?)
+       '+ (primp 2 +)
+       '- (primp 2 -)
+       '* (primp 2 *)
+       '/ (primp 2 /)
+       '> (primp 2 >)
+       '< (primp 2 <)
+       '>= (primp 2 >=)
+       '=< (primp 2 =<)
+       '= (primp 2 =)))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
