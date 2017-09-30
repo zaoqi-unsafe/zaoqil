@@ -53,7 +53,18 @@
               (λ (d rs)
                 (f (cons (car xs) d) rs)))
              (_!_))))))
-
+(define (unlazy** xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (cond
+       [(null? xs) (f '())]
+       [(pair? xs)
+        (unlazy**
+         (cdr xs)
+         (λ (d)
+           (f (cons (car xs) d))))]
+       [else (_!_)]))))
 (define (unlazy... xs f)
   (if (null? xs)
       (f '())
@@ -64,6 +75,10 @@
           (cdr xs)
           (λ (d)
             (f (cons a d))))))))
+(define (unlazy*+ n xs f)
+  (if (zero? n)
+      (unlazy** xs (λ (rs) (f rs '())))
+      (unlazy* n xs f)))
 
 (define env hasheq)
 (define envset hash-set)
@@ -72,7 +87,7 @@
 ; Nat → (Env → [Exp] → Any) → Prim
 (struct prim (n f))
 (define (prim-apply f env xs g)
-  (unlazy* (prim-n f) xs (λ (xs rs) (g rs ((prim-f f) env xs)))))
+  (unlazy*+ (prim-n f) xs (λ (xs rs) (g rs ((prim-f f) env xs)))))
 (define (primm n f) (prim n (λ (env xs) (apply f (cons env xs)))))
 (define (primf n f) (prim n (λ (env xs) (apply f (map (λ (x) (eeval env x)) xs)))))
 (define (primp n f)
@@ -88,6 +103,8 @@
 (struct func (v))
 ; Func → Macro
 (struct macro (v))
+; Hash Symbol Any → Record
+(struct record (v))
 
 (define (to-func x) (%to-func (curry x)))
 (define (%to-func x)
@@ -110,6 +127,10 @@
     (cond
       [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
       [(f? x) (from-f x)]
+      [(record? x)
+       (make-immutable-hasheq
+        (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
+             (hash->list (record-v x))))]
       [else x])))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x)))
@@ -158,6 +179,8 @@
                                 (aapply env r rs))))))]
           [else (_!_)]))))))
 
+(define fold foldl)
+
 (define genv
   (env
    'quote (primm
@@ -189,6 +212,35 @@
    '< (primp 2 <)
    '>= (primp 2 >=)
    '=< (primp 2 <=)
-   '= (primp 2 =)))
+   '= (primp 2 =)
+   'record (primm
+            0
+            (λ (env . xs)
+              (define (mkpair xs f)
+                (if (null? xs)
+                    (f '())
+                    (unlazy
+                     (car xs)
+                     (λ (s)
+                       (mkpair (cddr xs)
+                               (λ (d)
+                                 (f (cons (cons s (cadr xs)) d))))))))
+              (define newenv
+                (delay
+                  (let ([rc (force+ rc)])
+                    (fold (λ (p env) (envset env (car p) (cdr p))) env rc))))
+              (define rc
+                (delay
+                  (mkpair
+                   xs
+                   (λ (ps)
+                     (map (λ (p)
+                            (if (symbol? (car p))
+                                (cons (car p) (delay (eeval (force newenv) (cdr p))))
+                                (_!_))) ps)))))
+              (unlazy
+               rc
+               (λ (rc)
+                 (record (make-immutable-hasheq rc))))))))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
