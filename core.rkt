@@ -82,7 +82,7 @@
      (unlazy...
       (map (λ (x) (eeval env x)) xs)
       (λ (as)
-        (apply f (cons env as)))))))
+        (apply f as))))))
 
 ; (Any → Any) → Func
 (struct func (v))
