@@ -28,7 +28,7 @@
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
 
-(define (_!_) (error '_!_))
+(define-syntax-rule (_!_) (error '_!_))
 
 (define (force+ x)
   (if (promise? x)
@@ -185,7 +185,14 @@
 (define (env-append env ps)
   (fold (λ (p env) (envset env (car p) (cdr p))) env ps))
 
+(define (env+record env r)
+  (env-append env (hash->list (record-v r))))
+
+; Exp → Env → Env
+(define (cload e env) (env+record env (force+ (eeval env e))))
+
 (define genv
+  (cload (file->sexp "prelude.core")
   (env
    'quote (primm
            1
@@ -201,11 +208,14 @@
                 (func (λ (x) (eeval (envset env s x) v)))
                 (_!_))))))
    'cons (primf 2 cons)
-   'car (primp 2 car)
-   'cdr (primp 2 cdr)
+   'car (primp 1 car)
+   'cdr (primp 1 cdr)
+   'null? (primp 1 null?)
    'true true
    'false false
    'boolean? (primp 1 boolean?)
+   'if (primf 3 (λ (c t f)
+                  (unlazy c (λ (c) (if c t f)))))
    'pair? (primp 1 pair?)
    'symbol? (primp 1 symbol?)
    '+ (primp 2 +)
@@ -251,7 +261,7 @@
             (unlazy
              (eeval env r)
              (λ (r)
-               (eeval (env-append env (hash->list (record-v r))) x)))))
+               (eeval (env+record env r) x)))))
    ': (primm
        2
        (λ (env r x)
@@ -262,6 +272,6 @@
              x
              (λ (s)
                (hash-ref (record-v r) s)))))))
-   ))
+   )))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
