@@ -89,17 +89,27 @@
 ; Func → Macro
 (struct macro (v))
 
+(define (to-func x) (%to-func (curry x)))
+(define (%to-func x)
+  (if (procedure? x)
+      (func (λ (v) (%to-func (x (to-racket-value v)))))
+      (from-racket-value x)))
+
+(define (from-f x)
+  (λ as
+    (to-racket-value (aapply genv x (map (λ (a) (list 'quote (from-racket-value a))) as)))))
+
 (define (from-racket-value x)
   (cond
     [(promise? x) (delay (from-racket-value (force x)))]
-    ;需Fix
+    [(procedure? x) (to-func x)]
     [else x]))
 
 (define (to-racket-value x)
   (let ([x (force+ x)])
     (cond
       [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
-      [(func? x) (λ (v) (to-racket-value ((func-v x) (from-racket-value v))))];需Fix
+      [(f? x) (from-f x)]
       [else x])))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x)))
@@ -149,31 +159,36 @@
           [else (_!_)]))))))
 
 (define genv
-  (env 'λ (primm
-           2
-           (λ (env s v)
-             (unlazy
-              s
-              (λ (s)
-                (if (symbol? s)
-                    (func (λ (x) (eeval (envset env s x) v)))
-                    (_!_))))))
-       'cons (primf 2 cons)
-       'car (primp 2 car)
-       'cdr (primp 2 cdr)
-       'true true
-       'false false
-       'boolean? (primp 1 boolean?)
-       'pair? (primp 1 pair?)
-       'symbol? (primp 1 symbol?)
-       '+ (primp 2 +)
-       '- (primp 2 -)
-       '* (primp 2 *)
-       '/ (primp 2 /)
-       '> (primp 2 >)
-       '< (primp 2 <)
-       '>= (primp 2 >=)
-       '=< (primp 2 <=)
-       '= (primp 2 =)))
+  (env
+   'quote (primm
+           1
+           (λ (env x)
+             x))
+   'λ (primm
+       2
+       (λ (env s v)
+         (unlazy
+          s
+          (λ (s)
+            (if (symbol? s)
+                (func (λ (x) (eeval (envset env s x) v)))
+                (_!_))))))
+   'cons (primf 2 cons)
+   'car (primp 2 car)
+   'cdr (primp 2 cdr)
+   'true true
+   'false false
+   'boolean? (primp 1 boolean?)
+   'pair? (primp 1 pair?)
+   'symbol? (primp 1 symbol?)
+   '+ (primp 2 +)
+   '- (primp 2 -)
+   '* (primp 2 *)
+   '/ (primp 2 /)
+   '> (primp 2 >)
+   '< (primp 2 <)
+   '>= (primp 2 >=)
+   '=< (primp 2 <=)
+   '= (primp 2 =)))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
