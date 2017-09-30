@@ -34,11 +34,6 @@
   (if (promise? x)
       (force+ (force x))
       x))
-(define (force* x)
-  (let ([v (force+ x)])
-    (cond
-      [(pair? v) (cons (force* (car v)) (force* (cdr v)))]
-      [else v])))
 
 (define (unlazy x f)
   (if (promise? x)
@@ -93,6 +88,15 @@
 (struct func (v))
 ; Func → Macro
 (struct macro (v))
+
+(define (from-racket-value x) (error))
+
+(define (to-racket-value x)
+  (let ([x (force+ x)])
+    (cond
+      [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
+      [(func? x) (λ (v) (to-racket-value ((func-v x) (from-racket-value v))))]
+      [else (error 'type-error)])))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x)))
 
@@ -155,4 +159,4 @@
        'cdr (primp 2 cdr)
        'symbol? (primp 1 symbol?)))
 
-(define (ceval x) (force* (eeval genv x)))
+(define (ceval x) (to-racket-value (eeval genv x)))
