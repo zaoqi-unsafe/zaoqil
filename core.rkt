@@ -173,7 +173,7 @@
        '> (primp 2 >)
        '< (primp 2 <)
        '>= (primp 2 >=)
-       '=< (primp 2 =<)
+       '=< (primp 2 <=)
        '= (primp 2 =)))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
