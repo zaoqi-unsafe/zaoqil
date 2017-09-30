@@ -14,3 +14,5 @@
 (e (if true 0 not-a-value) 0)
 (e (= (record x 0 y x) (record y x x 0)) true)
 (e (open (record x 1 y x) (+ x y)) 2)
+(e (record x 1 y z z x) #hasheq((x . 1) (y . 1) (z . 1)))
+(e (record x 1 y (: _< x)) #hasheq((x . 1) (y . 1)))

@@ -271,7 +271,7 @@
                    (λ (env . xs)
                      (define newenv
                        (delay
-                         (env-append env (force+ rc))))
+                         (envset (env-append env (force+ rc)) '_< rec)))
                      (define rc
                        (delay
                          (mkpair
@@ -281,10 +281,12 @@
                                    (if (symbol? (car p))
                                        (cons (car p) (delay (eeval (force newenv) (cdr p))))
                                        (_!_))) ps)))))
-                     (unlazy
-                      rc
-                      (λ (rc)
-                        (record (make-immutable-hasheq rc))))))
+                     (define rec
+                       (unlazy
+                        rc
+                        (λ (rc)
+                          (record (make-immutable-hasheq rc)))))
+                     rec))
           'open (primm
                  2
                  (λ (env r x)
