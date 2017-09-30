@@ -30,6 +30,16 @@
 
 (define (_!_) (error '_!_))
 
+(define (force+ x)
+  (if (promise? x)
+      (force+ (force x))
+      x))
+(define (force* x)
+  (let ([v (force+ x)])
+    (cond
+      [(pair? v) (cons (force* (car v)) (force* (cdr v)))]
+      [else v])))
+
 (define (unlazy x f)
   (if (promise? x)
       (delay (unlazy (force x) f))
@@ -69,7 +79,7 @@
 (define (prim-apply f env xs g)
   (unlazy* (prim-n f) xs (λ (xs rs) (g rs ((prim-f f) env xs)))))
 (define (primm n f) (prim n (λ (env xs) (apply f (cons env xs)))))
-(define (primf n f) (prim n (λ (env xs) (apply f (cons env (map (λ (x) (eeval env x)) xs))))))
+(define (primf n f) (prim n (λ (env xs) (apply f (map (λ (x) (eeval env x)) xs)))))
 (define (primp n f)
   (prim
    n
@@ -144,3 +154,5 @@
        'car (primp 2 car)
        'cdr (primp 2 cdr)
        'symbol? (primp 1 symbol?)))
+
+(define (ceval x) (force* (eeval genv x)))
