@@ -23,8 +23,6 @@
        (if (eof-object? x)
            eof
            (datum->syntax #f (list 'quote x)))))))
-(define true #t)
-(define false #f)
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -215,6 +213,24 @@
                  (λ (d)
                    (f (cons (cons s (cadr xs)) d))))))))
 
+(define (ceq? x y c)
+  (unlazy
+   x
+   (λ (x)
+     (unlazy
+      y
+      (λ (y)
+        (cond
+          [(pair? x) (and (pair? y)
+                          (ceq? (car x) (car y)
+                                (λ ()
+                                  (ceq? (cdr x) (cdr y)
+                                        c))))]
+          [(record? x) (and (record? y)
+                            (ceq? (hash->list (record-v x)) (hash->list (record-v y)) c))]
+          [(number? x) (and (number? y) (= x y) (c))]
+          [else (and (equal? x y) (c))]))))))
+
 (define genv
   (cload (file->sexp "prelude.core")
          (env
@@ -250,7 +266,6 @@
           '< (primp 2 <)
           '>= (primp 2 >=)
           '=< (primp 2 <=)
-          '= (primp 2 =)
           'record (primm
                    0
                    (λ (env . xs)
@@ -287,6 +302,7 @@
                     x
                     (λ (s)
                       (hash-ref (record-v r) s)))))))
+          '= (primf 2 (λ (x y) (ceq? x y (λ () true))))
           )))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
