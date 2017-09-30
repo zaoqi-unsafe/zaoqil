@@ -49,18 +49,42 @@
                 (f (cons (car xs) d) rs)))
              (_!_))))))
 
+(define (unlazy... xs f)
+  (if (null? xs)
+      (f '())
+      (unlazy
+       (car xs)
+       (λ (a)
+         (unlazy...
+          (cdr xs)
+          (λ (d)
+            (f (cons a d))))))))
+
 (define env hasheq)
 (define envset hash-set)
 (define envget hash-ref)
 
-; Nat → (Env → ... → Any) → Prim
+; Nat → (Env → [Exp] → Any) → Prim
 (struct prim (n f))
 (define (prim-apply f env xs g)
-  (unlazy* (prim-n f) xs (λ (xs rs) (g rs (apply (prim-f f) (cons env xs))))))
+  (unlazy* (prim-n f) xs (λ (xs rs) (g rs ((prim-f f) env xs)))))
+(define (primm n f) (prim n (λ (env xs) (apply f (cons env xs)))))
+(define (primf n f) (prim n (λ (env xs) (apply f (cons env (map (λ (x) (eeval env x)) xs))))))
+(define (primp n f)
+  (prim
+   n
+   (λ (env xs)
+     (unlazy...
+      (map (λ (x) (eeval env x)) xs)
+      (λ (as)
+        (apply f (cons env as)))))))
+
 ; (Any → Any) → Func
 (struct func (v))
 ; Func → Macro
 (struct macro (v))
+
+(define (f? x) (or (func? x) (macro? x) (prim? x)))
 
 ; Env → Exp → Any
 (define (eeval env x) (delay (%eval env x)))
@@ -86,9 +110,14 @@
                (unlazy
                 ((func-v f) (eeval env (car xs)))
                 (λ (r)
-                  (if (func? r)
+                  (if (f? r)
                       (aapply env r (cdr xs))
-                      r)))
+                      (unlazy
+                       (cdr xs)
+                       (λ (d)
+                         (if (null? d)
+                             r
+                             (_!_)))))))
                (_!_))]
           [(prim? f)
            (prim-apply f env xs
@@ -100,3 +129,18 @@
                                 r
                                 (aapply env r rs))))))]
           [else (_!_)]))))))
+
+(define genv
+  (env 'λ (primm
+           2
+           (λ (env s v)
+             (unlazy
+              s
+              (λ (s)
+                (if (symbol? s)
+                    (func (λ (x) (eeval (envset env s x) v)))
+                    (_!_))))))
+       'cons (primf 2 cons)
+       'car (primp 2 car)
+       'cdr (primp 2 cdr)
+       'symbol? (primp 1 symbol?)))
