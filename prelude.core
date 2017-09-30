@@ -8,4 +8,6 @@
             (if (null? xs)
                 ()
                 (cons (f (car xs)) (map f (cdr xs))))))
+ succ (+ 1)
+ pred (- 1)
  )
