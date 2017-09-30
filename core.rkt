@@ -89,14 +89,18 @@
 ; Func → Macro
 (struct macro (v))
 
-(define (from-racket-value x) (error))
+(define (from-racket-value x)
+  (cond
+    [(promise? x) (delay (from-racket-value (force x)))]
+    ;需Fix
+    [else x]))
 
 (define (to-racket-value x)
   (let ([x (force+ x)])
     (cond
       [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
-      [(func? x) (λ (v) (to-racket-value ((func-v x) (from-racket-value v))))]
-      [else (error 'type-error)])))
+      [(func? x) (λ (v) (to-racket-value ((func-v x) (from-racket-value v))))];需Fix
+      [else x])))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x)))
 
