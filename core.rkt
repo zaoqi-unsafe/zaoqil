@@ -358,6 +358,7 @@
                             (catch-nothing x (λ (n) (capply f (list (nothing-v n)))))))
           'require (primm 2 (λ (env m x) (crequire env m (λ (nenv) (eeval nenv x)))))
           'apply (primf 2 (λ (f xs) (capply f xs)))
+          'eval (primm 1 (λ (env x) (eeval env (eeval env x))))
           )))
 
 (struct ioret (v))
