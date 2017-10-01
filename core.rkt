@@ -27,7 +27,7 @@
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
 
-(define-syntax-rule (_!_) (error '_!_))
+(define-syntax-rule (_!_) (raise (compile-error "")))
 
 (define (force+ x)
   (if (promise? x)
@@ -127,6 +127,8 @@
 (struct macro (v))
 ; Hash Symbol Any → Record
 (struct record (v))
+(struct nothing (v))
+(struct compile-error (v))
 
 (define (to-func x) (%to-func (curry x)))
 (define (%to-func x)
@@ -253,6 +255,12 @@
           [(number? x) (and (number? y) (= x y) (c))]
           [else (and (equal? x y) (c))]))))))
 
+(define (catch-nothing x f)
+  (with-handlers ([nothing? f])
+    (if (promise? x)
+        (delay (catch-nothing (with-handlers ([nothing? f]) (force x)) f))
+        x)))
+
 (define genv
   (cload (file->sexp "prelude.core")
          (env
@@ -340,6 +348,12 @@
                     (λ (s)
                       (hash-ref (record-v r) s)))))))
           '= (primf 2 (λ (x y) (ceq? x y (λ () true))))
+          'nothing (delay (raise (nothing "")))
+          'left (primf 1 (λ (x) (raise (nothing x))))
+          'catch-nothing (primf
+                          2
+                          (λ (f x)
+                            (catch-nothing x (λ (n) (capply f (list (nothing-v n)))))))
           )))
 
 (define (ceval x) (to-racket-value (eeval genv x)))
