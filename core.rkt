@@ -156,7 +156,10 @@
        (make-immutable-hasheq
         (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
              (hash->list (record-v x))))]
+      [(io? x) (force+ (runio x to-racket-value))]
       [else x])))
+
+(define (ceval x) (to-racket-value (eeval genv x)))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x) (func...? x)))
 (define (f-arity-at-least-0? x) #f)
@@ -354,6 +357,60 @@
                           2
                           (λ (f x)
                             (catch-nothing x (λ (n) (capply f (list (nothing-v n)))))))
+          'require (primm 2 (λ (env m x) (crequire env m (λ (nenv) (eeval nenv x)))))
           )))
 
-(define (ceval x) (to-racket-value (eeval genv x)))
+(struct ioret (v))
+(struct iocall/ccv (id x))
+(struct iocall/cc (id x))
+(struct iobind (x f))
+(struct ioputstr (x))
+(struct ioread-line ())
+
+(define (io? x) (or (ioret? x) (iocall/ccv? x) (iocall/cc? x) (iobind? x) (ioputstr? x) (ioread-line? x)))
+
+(define id!
+  (let ([idc 0])
+    (λ ()
+      (set! idc (succ idc))
+      idc)))
+
+(define (runio x f)
+  (unlazy
+   x
+   (λ (x)
+     (cond
+       [(ioret? x) (f (ioret-v x))]
+       [(iobind? x)
+        (runio (iobind-x x) (λ (r) (unlazy
+                                    (iobind-f x)
+                                    (λ (x)
+                                      (runio ((func-v x) r) f)))))]
+       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (display s) (f '())))]
+       [(iocall/ccv? x) x]
+       [(iocall/cc? x) (runio (iocall/cc-x x)
+                              (λ (r)
+                                (if (equal? (iocall/ccv-id r) (iocall/cc-id x))
+                                    (f (iocall/ccv-x r))
+                                    (_!_))))]
+       [(ioread-line? x) (f (read-line))]
+       [else (_!_)]))))
+
+(define io
+  (record (hasheq 'return (primf 1 ioret)
+                  '>>= (primf 2 iobind)
+                  'putstr (primf 1 ioputstr)
+                  'readline (ioread-line)
+                  'call/cc (primf
+                            1
+                            (λ (f)
+                              (let ([id (id!)])
+                                (iocall/cc id (capply f (list (primf 1 (λ (x) (iocall/ccv id x))))))))))))
+
+(define (crequire env m g)
+  (unlazy
+   m
+   (λ (m)
+     (cond
+       [(eq? m 'io) (g (envset env 'io io))]
+       [else (_!_)]))))
