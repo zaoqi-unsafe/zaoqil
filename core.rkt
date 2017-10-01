@@ -162,7 +162,6 @@
 (define (ceval x) (to-racket-value (eeval genv x)))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x) (func...? x)))
-(define (f-arity-at-least-0? x) #f)
 
 ; Env → Exp → Any
 (define (eeval env x) (delay (%eval env x)))
@@ -192,7 +191,7 @@
                    (cdr xs)
                    (λ (d)
                      (if (null? d)
-                         (if (f-arity-at-least-0? r)
+                         (if (func...? r)
                              (aapply env r '())
                              r)
                          (if (f? r)
