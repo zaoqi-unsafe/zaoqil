@@ -144,7 +144,7 @@
       [else x])))
 
 (define (f? x) (or (func? x) (macro? x) (prim? x)))
-(define (f-uncurried? x) #f)
+(define (f-arity-at-least-0? x) #f)
 
 ; Env → Exp → Any
 (define (eeval env x) (delay (%eval env x)))
@@ -174,7 +174,7 @@
                    (cdr xs)
                    (λ (d)
                      (if (null? d)
-                         (if (f-uncurried? r)
+                         (if (f-arity-at-least-0? r)
                              (aapply env r '())
                              r)
                          (if (f? r)
