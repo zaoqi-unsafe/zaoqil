@@ -79,6 +79,14 @@
       (unlazy** xs (λ (rs) (f rs '())))
       (unlazy* n xs f)))
 
+(define (lmap f xs)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         '()
+         (cons (f (car xs)) (lmap f (cdr xs)))))))
+
 (define env hasheq)
 (define envset hash-set)
 (define envget hash-ref)
@@ -86,7 +94,10 @@
 (define (capply f xs) (aapply genv f (map (λ (x) (list 'quote x)) xs)))
 
 ; Prim → Func
-(define (pack n p) (%pack n (λ (xs) (capply p xs))))
+(define (pack n p)
+  (if (zero? n)
+      p
+      (%pack n (λ (xs) (capply p xs)))))
 (define (%pack n g)
   (if (zero? n)
       (g '())
@@ -110,6 +121,8 @@
 
 ; (Any → Any) → Func
 (struct func (v))
+; (Stream Any → Any) → Func...
+(struct func... (v))
 ; Func → Macro
 (struct macro (v))
 ; Hash Symbol Any → Record
@@ -143,7 +156,7 @@
              (hash->list (record-v x))))]
       [else x])))
 
-(define (f? x) (or (func? x) (macro? x) (prim? x)))
+(define (f? x) (or (func? x) (macro? x) (prim? x) (func...? x)))
 (define (f-arity-at-least-0? x) #f)
 
 ; Env → Exp → Any
@@ -190,22 +203,15 @@
                             (if (null? rs)
                                 r
                                 (aapply env r rs))))))]
+          [(func...? f)
+           (aapply env (func (func...-v f)) (list (cons 'list xs)))]
           [(macro? f)
-           (if (pair? xs)
-               (unlazy
-                ((func-v (macro-v f)) (car xs))
-                (λ (r)
-                  (unlazy
-                   (cdr xs)
-                   (λ (d)
-                     (if (null? d)
-                         (if (f-arity-at-least-0? r)
-                             (aapply env (macro r) '())
-                             (eeval env r))
-                         (if (f? r)
-                             (aapply env (macro r) (cdr xs))
-                             (_!_)))))))
-               (_!_))]
+           (unlazy
+            (aapply env (macro-v f) (lmap (λ (x) (list 'quote x)) xs))
+            (λ (r)
+              (if (f? r)
+                  (macro r)
+                  (eeval env r))))]
           [else (_!_)]))))))
 
 (define fold foldl)
@@ -263,19 +269,29 @@
                    (if (symbol? s)
                        (func (λ (x) (eeval (envset env s x) v)))
                        (_!_))))))
+          'λ... (primm
+                 2
+                 (λ (env s v)
+                   (unlazy
+                    s
+                    (λ (s)
+                      (if (symbol? s)
+                          (func... (λ (x) (eeval (envset env s x) v)))
+                          (_!_))))))
           'λ? (primp 1 func?)
           'macro (primp 1 (λ (f) (if (func? f) (macro f) (_!_))))
           'macro? (primp 1 macro?)
+          'pair? (primp 1 pair?)
           'cons (primf 2 cons)
           'car (primp 1 car)
           'cdr (primp 1 cdr)
           'null? (primp 1 null?)
+          'list (primf 0 (λ xs xs))
           'true true
           'false false
           'boolean? (primp 1 boolean?)
           'if (primf 3 (λ (c t f)
                          (unlazy c (λ (c) (if c t f)))))
-          'pair? (primp 1 pair?)
           'symbol? (primp 1 symbol?)
           '+ (primp 2 +)
           '- (primp 2 -)
