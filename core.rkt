@@ -123,7 +123,7 @@
 (struct func (v))
 ; (Stream Any → Any) → Func...
 (struct func... (v))
-; Func → Macro
+; F → Macro
 (struct macro (v))
 ; Hash Symbol Any → Record
 (struct record (v))
