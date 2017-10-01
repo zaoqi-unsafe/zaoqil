@@ -91,7 +91,7 @@
 (define envset hash-set)
 (define envget hash-ref)
 
-(define (capply f xs) (aapply genv f (map (λ (x) (list 'quote x)) xs)))
+(define (capply f xs) (aapply genv f (lmap (λ (x) (list 'quote x)) xs)))
 
 ; Prim → Func
 (define (pack n p)
@@ -357,6 +357,7 @@
                           (λ (f x)
                             (catch-nothing x (λ (n) (capply f (list (nothing-v n)))))))
           'require (primm 2 (λ (env m x) (crequire env m (λ (nenv) (eeval nenv x)))))
+          'apply (primf 2 (λ (f xs) (capply f xs)))
           )))
 
 (struct ioret (v))

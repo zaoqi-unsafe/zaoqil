@@ -23,5 +23,6 @@
 (e (catch-nothing (λ x 0) nothing) 0)
 (e (require io (open io (return 0))) 0)
 (e ((: (record f (λ... xs xs)) f) 0) '(0))
-(e (: (record f (λ... xs xs)) f 0) '(0))
-(e ((λ x (λ... xs (cons x xs))) 0) '(0))
+(e (: (record f (λ... xs xs)) f 'a) '(a))
+(e ((λ x (λ... xs (cons x xs))) 'a) '(a))
+(e (apply (λ... xs (cons 'h xs)) (list 'a 'b 'c)) '(h a b c))
