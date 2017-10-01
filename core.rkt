@@ -190,6 +190,22 @@
                             (if (null? rs)
                                 r
                                 (aapply env r rs))))))]
+          [(macro? f)
+           (if (pair? xs)
+               (unlazy
+                ((func-v (macro-v f)) (car xs))
+                (λ (r)
+                  (unlazy
+                   (cdr xs)
+                   (λ (d)
+                     (if (null? d)
+                         (if (f-arity-at-least-0? r)
+                             (aapply env (macro r) '())
+                             (eeval env r))
+                         (if (f? r)
+                             (aapply env (macro r) (cdr xs))
+                             (_!_)))))))
+               (_!_))]
           [else (_!_)]))))))
 
 (define fold foldl)
@@ -247,6 +263,7 @@
                    (if (symbol? s)
                        (func (λ (x) (eeval (envset env s x) v)))
                        (_!_))))))
+          'macro (primp 1 (λ (f) (if (func? f) (macro f) (_!_))))
           'cons (primf 2 cons)
           'car (primp 1 car)
           'cdr (primp 1 cdr)

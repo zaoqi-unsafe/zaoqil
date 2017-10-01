@@ -16,3 +16,4 @@
 (e (open (record x 1 y x) (+ x y)) 2)
 (e (record x 1 y z z x) #hasheq((x . 1) (y . 1) (z . 1)))
 (e (record x 1 y (: _< x)) #hasheq((x . 1) (y . 1)))
+(e ((macro (λ x (cons 'quote (cons x ())))) (+ 1 1)) '(+ 1 1))
