@@ -27,3 +27,4 @@
 (e ((λ x (λ... xs (cons x xs))) 'a) '(a))
 (e (apply (λ... xs (cons 'h xs)) (list 'a 'b 'c)) '(h a b c))
 (e (eval '(λ... xs (cons 'h xs)) 'a 'b 'c) '(h a b c))
+(e (or #t #f) #t)

@@ -16,13 +16,19 @@
   '(record
     module record
     id (λ x x)
-    or (λ x (λ y (if x t y)))
-    and (λ x (λ y (if x y f)))
+    or (λ x (λ y (choice2 x y (λ x (λ y (if x #t y))))))
+    and (λ x (λ y (choice2 x y (λ x (λ y (if x y #f))))))
     list? (λ xs (or (null? xs) (list? (cdr xs))))
     map (λ f (λ xs
                (if (null? xs)
                    ()
                    (cons (f (car xs)) (map f (cdr xs))))))
+    filter (λ f (λ xs
+                  (if (null? xs)
+                      ()
+                      (if (f (car xs))
+                          (cons (car xs) (filter f (cdr xs)))
+                          (filter f (cdr xs))))))
     succ (+ 1)
     pred (- 1)
     ))
@@ -30,7 +36,7 @@
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
 
-(define (_!_) (raise (compile-error "")))
+(define (_!_ x) (raise (compile-error x)))
 
 (define (force+ x)
   (if (promise? x)
@@ -54,7 +60,7 @@
               (cdr xs)
               (λ (d rs)
                 (f (cons (car xs) d) rs)))
-             (_!_))))))
+             (_!_ 'unlazy*))))))
 (define (unlazy** xs f)
   (unlazy
    xs
@@ -66,7 +72,7 @@
          (cdr xs)
          (λ (d)
            (f (cons (car xs) d))))]
-       [else (_!_)]))))
+       [else (_!_ 'unlazy**)]))))
 (define (unlazy... xs f)
   (if (null? xs)
       (f '())
@@ -131,7 +137,7 @@
 ; Hash Symbol Any → Record
 (struct record (v))
 (struct nothing (v))
-(struct compile-error (v))
+(struct compile-error (v) #:transparent)
 
 (define (to-func x) (%to-func (curry x)))
 (define (%to-func x)
@@ -173,7 +179,7 @@
    x
    (λ (x)
      (cond
-       [(symbol? x) (envget env x (λ () (_!_)))]
+       [(symbol? x) (envget env x (λ () (_!_ (list '%eval x env))))]
        [(pair? x) (aapply env (eeval env (car x)) (cdr x))]
        [else x]))))
 ; Env → Any → Exp → Any
@@ -199,8 +205,8 @@
                              r)
                          (if (f? r)
                              (aapply env r (cdr xs))
-                             (_!_)))))))
-               (_!_))]
+                             (_!_ 'aapply)))))))
+               (_!_ 'aapply))]
           [(prim? f)
            (prim-apply f env xs
                        (λ (rs r)
@@ -219,7 +225,7 @@
               (if (f? r)
                   (macro r)
                   (eeval env r))))]
-          [else (_!_)]))))))
+          [else (_!_ 'aapply)]))))))
 
 (define fold foldl)
 
@@ -266,6 +272,17 @@
         (delay (catch-nothing (with-handlers ([nothing? f]) (force x)) f))
         x)))
 
+(struct choice2-_!_ (v))
+
+(define (choice2 x y f)
+  (if (promise? x)
+      (delay (let ([nx (with-handlers ([(λ (x) #t) choice2-_!_])
+               (force x))])
+               (if (choice2-_!_? nx)
+                   (f y (delay (raise (choice2-_!_-v nx))))
+                   (choice2 y nx f))))
+      (f x y)))
+
 (define genv
   (cload prelude-sexp
          (env
@@ -281,7 +298,7 @@
                  (λ (s)
                    (if (symbol? s)
                        (func (λ (x) (eeval (envset env s x) v)))
-                       (_!_))))))
+                       (_!_ 'λ))))))
           'λ... (primm
                  2
                  (λ (env s v)
@@ -290,9 +307,9 @@
                     (λ (s)
                       (if (symbol? s)
                           (func... (λ (x) (eeval (envset env s x) v)))
-                          (_!_))))))
+                          (_!_ 'λ...))))))
           'λ? (primp 1 func?)
-          'macro (primp 1 (λ (f) (if (func? f) (macro f) (_!_))))
+          'macro (primp 1 (λ (f) (if (func? f) (macro f) (_!_ 'macro))))
           'macro? (primp 1 macro?)
           'pair? (primp 1 pair?)
           'cons (primf 2 cons)
@@ -328,7 +345,7 @@
                             (map (λ (p)
                                    (if (symbol? (car p))
                                        (cons (car p) (delay (eeval (force newenv) (cdr p))))
-                                       (_!_))) ps)))))
+                                       (_!_ 'record))) ps)))))
                      (define rec
                        (unlazy
                         rc
@@ -362,6 +379,10 @@
           'require (primm 2 (λ (env m x) (crequire env m (λ (nenv) (eeval nenv x)))))
           'apply (primf 2 (λ (f xs) (capply f xs)))
           'eval (primm 1 (λ (env x) (eeval env (eeval env x))))
+          'choice2 (primm
+                    3
+                    (λ (env x y f)
+                      (choice2 (eeval env x) (eeval env y) (λ (x y) (capply (eeval env f) (list x y))))))
           )))
 
 (struct ioret (v))
@@ -396,9 +417,9 @@
                               (λ (r)
                                 (if (equal? (iocall/ccv-id r) (iocall/cc-id x))
                                     (f (iocall/ccv-x r))
-                                    (_!_))))]
+                                    (_!_ 'runio))))]
        [(ioread-line? x) (f (read-line))]
-       [else (_!_)]))))
+       [else (_!_ 'runio)]))))
 
 (define io
   (record (hasheq 'return (primf 1 ioret)
@@ -417,4 +438,4 @@
    (λ (m)
      (cond
        [(eq? m 'io) (g (envset env 'io io))]
-       [else (_!_)]))))
+       [else (_!_ 'crequire)]))))
