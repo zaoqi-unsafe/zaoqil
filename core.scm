@@ -31,6 +31,10 @@
                           (filter f (cdr xs))))))
     succ (+ 1)
     pred (- 1)
+    prelude/io (require io
+                        (module
+                            >> (λ x (λ y (>>= x (λ (i) y))))
+                            putstrln (λ s (>> (: io putstr s) (: io newline)))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -390,9 +394,10 @@
 (struct iocall/cc (id x))
 (struct iobind (x f))
 (struct ioputstr (x))
+(struct ionewline ())
 (struct ioread-line ())
 
-(define (io? x) (or (ioret? x) (iocall/ccv? x) (iocall/cc? x) (iobind? x) (ioputstr? x) (ioread-line? x)))
+(define (io? x) (or (ioret? x) (iocall/ccv? x) (iocall/cc? x) (iobind? x) (ioputstr? x) (ionewline? x) (ioread-line? x)))
 
 (define id!
   (let ([idc 0])
@@ -411,7 +416,8 @@
                                     (iobind-f x)
                                     (λ (x)
                                       (runio ((func-v x) r) f)))))]
-       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (display s) (f '())))]
+       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (write s) (f '())))]
+       [(ionewline? x) (newline) (f '())]
        [(iocall/ccv? x) x]
        [(iocall/cc? x) (runio (iocall/cc-x x)
                               (λ (r)
@@ -425,6 +431,7 @@
   (record (hasheq 'return (primf 1 ioret)
                   '>>= (primf 2 iobind)
                   'putstr (primf 1 ioputstr)
+                  'newline (ionewline)
                   'readline (ioread-line)
                   'call/cc (primf
                             1
@@ -437,5 +444,6 @@
    m
    (λ (m)
      (cond
+       [(hash-has-key? env m) (g env)]
        [(eq? m 'io) (g (envset env 'io io))]
        [else (_!_ 'crequire)]))))
