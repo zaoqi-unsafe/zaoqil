@@ -416,7 +416,7 @@
                                     (iobind-f x)
                                     (λ (x)
                                       (runio ((func-v x) r) f)))))]
-       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (write s) (f '())))]
+       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (display s) (f '())))]
        [(ionewline? x) (newline) (f '())]
        [(iocall/ccv? x) x]
        [(iocall/cc? x) (runio (iocall/cc-x x)
