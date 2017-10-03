@@ -228,26 +228,24 @@
   (env-append env (hash->list (record-v r))))
 (define (cload e env) (env+record env (force+ (eeval env e))))
 
+(define (mkλ f s)
+  (pm 2 (λ (envs s envx x)
+          (unlazy
+           s
+           (λ (s)
+             (if (symbol? s)
+                 (f (λ (env a)
+                      (eeval (env-set envx s (eeval env a)) x)))
+                 (err syntaxerr s (list s x) (list envs envx))))))))
+
 (define genv
   (cload
    prelude
    (newenv
-    'λ (pm 2 (λ (envs s envx x)
-               (unlazy
-                s
-                (λ (s)
-                  (if (symbol? s)
-                      (func (λ (env a)
-                              (eeval (env-set envx s (eeval env a)) x)))
-                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
-    'λ... (pm 2 (λ (envs s envx x)
-                  (unlazy
-                   s
-                   (λ (s)
-                     (if (symbol? s)
-                         (func... (λ (env as)
-                                    (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
-                         (err syntaxerr 'λ... (list s x) (list envs envx)))))))
+    'λ (mkλ func 'λ)
+    'λ... (mkλ func... 'λ...)
+    'λ? (p 1 func?)
+    'λ...? (p 1 func...?)
     'true #t
     'false #f
     'quote (pm 1 (λ (env x) x))
@@ -386,9 +384,9 @@
 (define (n? x)
   (or (eq? x #\0) (eq? x #\1) (eq? x #\2) (eq? x #\3) (eq? x #\4) (eq? x #\5) (eq? x #\6) (eq? x #\7) (eq? x #\8) (eq? x #\9)))
 (define (read-number xs)
-       (let ([x (%read-number xs)])
-         (and x
-              (reads (string->number (list->string (reads-x x))) (reads-r x)))))
+  (let ([x (%read-number xs)])
+    (and x
+         (reads (string->number (list->string (reads-x x))) (reads-r x)))))
 (define (%read-number xs)
   (if (eq? (car xs) #\.)
       (let ([x (%%read-number (cdr xs))])
