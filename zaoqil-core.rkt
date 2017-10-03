@@ -158,7 +158,7 @@
   (cond
     [(promise? x) (delay (from-racket-value (force x)))]
     ;[(procedure? x) (to-func x)]
-    ;[(hash? x) (record x)];需修复: 可能不是Hash Symbol Any
+    [(hash? x) (record x)];需修复: 可能不是Hash Symbol Any
     [else x]))
 (define (to-racket-value x)
   (let ([x (force+ x)])
@@ -166,10 +166,10 @@
       [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
       ;[(func? x) (from-func x)]
       ;[(func...? x) (from-func... x)]
-      ;[(record? x)
-      ; (make-immutable-hasheq
-      ;  (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
-      ;       (hash->list (record-v x))))]
+      [(record? x)
+       (make-immutable-hasheq
+        (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
+             (hash->list (record-v x))))]
       ;[(io? x) (force+ (runio x to-racket-value))]
       [else x])))
 
