@@ -13,6 +13,8 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+(provide core)
+
 (define prelude-sexp
   '(record
     module record
@@ -47,7 +49,7 @@
       (f x)))
 
 ; U undefined notfunction → Symbol → Exp → Env
-(struct compile-error (t f x e))
+(struct compile-error (t f x e) #:transparent)
 (define undefined 'undefined)
 (define notfunction 'notfunction)
 (define noarg 'noarg)
@@ -103,3 +105,45 @@
                (err noarg 'apply (list f xs) env))))]
        [(func...? f) ((func...-v f) env xs)]
        [else (err notfunction 'apply (list f xs))]))))
+
+
+(define (force+ x)
+  (if (promise? x)
+      (force+ (force x))
+      x))
+
+(define (from-racket-value x)
+  (cond
+    [(promise? x) (delay (from-racket-value (force x)))]
+    ;[(procedure? x) (to-func x)]
+    ;[(hash? x) (record x)];需修复: 可能不是Hash Symbol Any
+    [else x]))
+
+(define (to-racket-value x)
+  (let ([x (force+ x)])
+    (cond
+      [(pair? x) (cons (to-racket-value (car x)) (to-racket-value (cdr x)))]
+      ;[(func? x) (from-func x)]
+      ;[(func...? x) (from-func... x)]
+      ;[(record? x)
+      ; (make-immutable-hasheq
+      ;  (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
+      ;       (hash->list (record-v x))))]
+      ;[(io? x) (force+ (runio x to-racket-value))]
+      [else x])))
+
+(define (core x) (to-racket-value (eeval genv x)))
+
+(define (makefunc n f)
+  (if (zero? n)
+      (f '())
+      (func (λ (env x)
+              (makefunc (pred n) (λ (xs)
+                                   (f (cons env (cons x xs)))))))))
+(define (pmacro n f) (makefunc n (λ (xs) (apply f xs))))
+
+(define genv
+  (newenv
+   'true #t
+   'false #f
+   'quote (pmacro 1 (λ (env x) x))))
