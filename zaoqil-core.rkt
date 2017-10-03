@@ -158,7 +158,11 @@
 (define (from-racket-value x)
   (cond
     [(promise? x) (delay (from-racket-value (force x)))]
-    ;[(procedure? x) (to-func x)]
+    [(procedure? x)
+     (let ([n (procedure-arity x)])
+       (if (number? n)
+           (p n x)
+           (p... x)))]
     [(hash? x) (record x)];需修复: 可能不是Hash Symbol Any
     [else x]))
 (define (to-racket-value x)
@@ -193,6 +197,7 @@
 (define (pf n f) (makef n (λ (xs) (apply f xs))))
 (define (pf... f) (func... (λ (env xs) (unlazystream xs (λ (xs) (f (map (λ (x) (eeval env x)) xs)))))))
 (define (p n f) (makef n (λ (xs) (unlazy... xs (λ (xs) (apply f xs))))))
+(define (p... f) (pf... (λ (xs) (unlazy... xs f))))
 
 (define (ceq? x y c)
   (unlazy
