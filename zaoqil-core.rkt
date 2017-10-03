@@ -67,7 +67,8 @@
 (define syntaxerr 'syntax)
 (struct left (x))
 ; Nothing = Left ()
-(define (err t f x e) (raise (compile-error t f x e)))
+(define-syntax-rule (err t f x e) (error 'err))
+;(define (err t f x e) (raise (compile-error t f x e)))
 
 ; String → Nat → [U Symbol (Promise+ Record)] → U Symbol (Promise+ Record) → At
 (struct at (file line s x))
@@ -238,6 +239,8 @@
                       (eeval (env-set envx s (eeval env a)) x)))
                  (err syntaxerr s (list s x) (list envs envx))))))))
 
+(define (capply f xs) (aapply genv f (lmap (λ (x) (list 'quote x)) xs)))
+
 (define genv
   (cload
    prelude
@@ -306,9 +309,15 @@
     'choice2 (pf 3 (λ (x y f)
                      (choice2 x y (λ (x y) (capply f (list x y))))))
     'if (pf 3 (λ (c t f) (unlazy c (λ (c) (if c t f)))))
+    'require (pm 2 (λ (envm m envx x)
+                     (unlazy
+                      m
+                      (λ (m)
+                        (cond
+                          [(env-has? envm m) (eeval (env-set envx m (env-ref envm m)) x)]
+                          [(eq? m 'io) (eeval (env-set envx 'io io) x)]
+                          [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     )))
-
-(define (capply f xs) (aapply genv f (lmap (λ (x) (list 'quote x)) xs)))
 
 (struct choice2-_!_ (v))
 (define (choice2 x y f)
@@ -405,3 +414,49 @@
          (if n
              (reads (cons (car xs) (reads-x n)) (reads-r n))
              (reads (list (car xs)) (cdr xs))))))
+
+(struct ioret (v))
+(struct iocall/ccv (id x))
+(struct iocall/cc (id x))
+(struct iobind (x f))
+(struct ioputstr (x))
+(struct ionewline ())
+(struct ioread-line ())
+(define (io? x) (or (ioret? x) (iocall/ccv? x) (iocall/cc? x) (iobind? x) (ioputstr? x) (ionewline? x) (ioread-line? x)))
+(define id!
+  (let ([idc 0])
+    (λ ()
+      (set! idc (succ idc))
+      idc)))
+(define (runio x f)
+  (unlazy
+   x
+   (λ (x)
+     (cond
+       [(ioret? x) (f (ioret-v x))]
+       [(iobind? x)
+        (runio (iobind-x x) (λ (r) (unlazy
+                                    (iobind-f x)
+                                    (λ (x)
+                                      (runio (capply x (list r)) f)))))]
+       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (display s) (f '())))]
+       [(ionewline? x) (newline) (f '())]
+       [(iocall/ccv? x) x]
+       [(iocall/cc? x) (runio (iocall/cc-x x)
+                              (λ (r)
+                                (if (equal? (iocall/ccv-id r) (iocall/cc-id x))
+                                    (f (iocall/ccv-x r))
+                                    (err syntaxerr 'runio (list x f) '()))))]
+       [(ioread-line? x) (f (read-line))]
+       [else (err syntaxerr 'runio (list x f) '())]))))
+(define io
+  (record (hasheq 'return (pf 1 ioret)
+                  '>>= (pf 2 iobind)
+                  'putstr (pf 1 ioputstr)
+                  'newline (ionewline)
+                  'readline (ioread-line)
+                  'call/cc (pf
+                            1
+                            (λ (f)
+                              (let ([id (id!)])
+                                (iocall/cc id (capply f (list (pf 1 (λ (x) (iocall/ccv id x))))))))))))
