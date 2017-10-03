@@ -111,6 +111,16 @@
   (if (promise? x)
       (force+ (force x))
       x))
+(define (unlazy... xs f)
+  (if (null? xs)
+      (f '())
+      (unlazy
+       (car xs)
+       (λ (a)
+         (unlazy...
+          (cdr xs)
+          (λ (d)
+            (f (cons a d))))))))
 
 (define (from-racket-value x)
   (cond
@@ -118,7 +128,6 @@
     ;[(procedure? x) (to-func x)]
     ;[(hash? x) (record x)];需修复: 可能不是Hash Symbol Any
     [else x]))
-
 (define (to-racket-value x)
   (let ([x (force+ x)])
     (cond
@@ -148,10 +157,43 @@
                                 (f (cons (eeval env x) xs))))))))
 (define (pm n f) (makefunc n (λ (xs) (apply f xs))))
 (define (pf n f) (makef n (λ (xs) (apply f xs))))
+(define (p n f) (makef n (λ (xs) (unlazy... xs (λ (xs) (apply f xs))))))
+
+(define (ceq? x y c)
+  (unlazy
+   x
+   (λ (x)
+     (unlazy
+      y
+      (λ (y)
+        (cond
+          [(pair? x) (and (pair? y)
+                          (ceq? (car x) (car y)
+                                (λ ()
+                                  (ceq? (cdr x) (cdr y)
+                                        c))))]
+          ;[(record? x) (and (record? y)
+          ;                  (ceq? (hash->list (record-v x)) (hash->list (record-v y)) c))]
+          [(number? x) (and (number? y) (= x y) (c))]
+          [else (and (equal? x y) (c))]))))))
 
 (define genv
   (newenv
    'true #t
    'false #f
    'quote (pm 1 (λ (env x) x))
-   'cons (pf 2 cons)))
+   'cons (pf 2 cons)
+   'car (p 1 car)
+   'cdr (p 1 cdr)
+   '+ (p 2 +)
+   '- (p 2 -)
+   '* (p 2 *)
+   '/ (p 2 /)
+   '< (p 2 <)
+   '> (p 2 >)
+   '=< (p 2 <=)
+   '>= (p 2 >=)
+   '= (pf 2 (λ (x y) (ceq? x y (λ () true))))
+   '=/= (pf 2 (λ (x y) (unlazy (ceq? x y (λ () true)) not)))
+   'not (p 1 not)
+   ))
