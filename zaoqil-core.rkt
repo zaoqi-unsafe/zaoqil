@@ -67,8 +67,8 @@
 (define syntaxerr 'syntax)
 (struct left (x))
 ; Nothing = Left ()
-(define-syntax-rule (err t f x e) (error 'err))
-;(define (err t f x e) (raise (compile-error t f x e)))
+;(define-syntax-rule (err t f x e) (error 'err))
+(define (err t f x e) (raise (compile-error t f x e)))
 
 ; String → Nat → [U Symbol (Promise+ Record)] → U Symbol (Promise+ Record) → At
 (struct at (file line s x))
@@ -229,16 +229,6 @@
   (env-append env (hash->list (record-v r))))
 (define (cload e env) (env+record env (force+ (eeval env e))))
 
-(define (mkλ f s)
-  (pm 2 (λ (envs s envx x)
-          (unlazy
-           s
-           (λ (s)
-             (if (symbol? s)
-                 (f (λ (env a)
-                      (eeval (env-set envx s (eeval env a)) x)))
-                 (err syntaxerr s (list s x) (list envs envx))))))))
-
 (define (capply f xs) (aapply genv f (lmap (λ (x) (list 'quote x)) xs)))
 
 (define genv
@@ -247,8 +237,23 @@
    (newenv
     'eval (pm 1 (λ (env x) (eeval env (eeval env x))))
     'apply (pf 1 capply)
-    'λ (mkλ func 'λ)
-    'λ... (mkλ func... 'λ...)
+    'λ (pm 2 (λ (envs s envx x)
+               (unlazy
+                s
+                (λ (s)
+                  (if (symbol? s)
+                      (func (λ (env a)
+                              (eeval (env-set envx s (eeval env a)) x)))
+                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
+    'λ... (pm 2 (λ (envs s envx x)
+                  (unlazy
+                   s
+                   (λ (s)
+                     (if (symbol? s)
+                         (func... (λ (env as)
+                                    (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
+                         (err syntaxerr 'λ... (list s x) (list envs envx)))))))
+
     'λ? (p 1 func?)
     'λ...? (p 1 func...?)
     'true #t
