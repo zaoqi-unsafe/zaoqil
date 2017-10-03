@@ -31,3 +31,5 @@
 (e (: (record x (+ 0 0)) x) 0)
 (e (: (record f (λ... xs xs)) f 'a) '(a))
 (e (((open (record f (λ... xs xs))) f) 'a) '(a))
+(e (or #t #f) #t)
+(e (= (record x 0 y x) (record y x x 0)) true)

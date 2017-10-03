@@ -24,12 +24,12 @@
         (writeln rf)
         r))))
 
-(define prelude-sexp
+(define prelude
   '(record
     module record
     id (λ x x)
-    or (λ x (λ y (choice2 x y (λ x (λ y (if x #t y))))))
-    and (λ x (λ y (choice2 x y (λ x (λ y (if x y #f))))))
+    or (λ x (λ y (choice2 x y (λ x (λ y (if x true y))))))
+    and (λ x (λ y (choice2 x y (λ x (λ y (if x y false))))))
     list? (λ xs (or (null? xs) (list? (cdr xs))))
     map (λ f (λ xs
                (if (null? xs)
@@ -206,8 +206,8 @@
                                 (λ ()
                                   (ceq? (cdr x) (cdr y)
                                         c))))]
-          ;[(record? x) (and (record? y)
-          ;                  (ceq? (hash->list (record-v x)) (hash->list (record-v y)) c))]
+          [(record? x) (and (record? y)
+                            (ceq? (hash->list (record-v x)) (hash->list (record-v y)) c))]
           [(number? x) (and (number? y) (= x y) (c))]
           [else (and (equal? x y) (c))]))))))
 
@@ -226,78 +226,96 @@
   (fold (λ (p env) (env-set env (car p) (cdr p))) env ps))
 (define (env+record env r)
   (env-append env (hash->list (record-v r))))
+(define (cload e env) (env+record env (force+ (eeval env e))))
 
 (define genv
-  (newenv
-   'λ (pm 2 (λ (envs s envx x)
-              (unlazy
-               s
-               (λ (s)
-                 (if (symbol? s)
-                     (func (λ (env a)
-                             (eeval (env-set envx s (eeval env a)) x)))
-                     (err syntaxerr 'λ (list s x) (list envs envx)))))))
-   'λ... (pm 2 (λ (envs s envx x)
-                 (unlazy
-                  s
-                  (λ (s)
-                    (if (symbol? s)
-                        (func... (λ (env as)
-                                   (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
-                        (err syntaxerr 'λ... (list s x) (list envs envx)))))))
-   'true #t
-   'false #f
-   'quote (pm 1 (λ (env x) x))
-   'cons (pf 2 cons)
-   'car (p 1 car)
-   'cdr (p 1 cdr)
-   '+ (p 2 +)
-   '- (p 2 -)
-   '* (p 2 *)
-   '/ (p 2 /)
-   '< (p 2 <)
-   '> (p 2 >)
-   '=< (p 2 <=)
-   '>= (p 2 >=)
-   '= (pf 2 (λ (x y) (ceq? x y (λ () true))))
-   '=/= (pf 2 (λ (x y) (unlazy (ceq? x y (λ () true)) not)))
-   'not (p 1 not)
-   'list (pf... (λ (xs) xs))
-   'record (pm... (λ (env xs)
-                    (define newenv
-                      (delay
-                        (env-set (env-append env (force+ rc)) '_< rec)))
-                    (define newenv+
-                      (delay
-                        (env-at+ (force newenv) recf)))
-                    (define rc
-                      (delay
-                        (mkpair
-                         xs
-                         (λ (ps)
-                           (map (λ (p)
-                                  (let ([s (car p)])
-                                    (if (symbol? s)
-                                        (cons s (delay (eeval (env-at+ (force newenv+) s) (cdr p))))
-                                        (err syntaxerr 'record xs env)))) ps)))))
-                    (define rec
-                      (unlazy
-                       rc
-                       (λ (rc)
-                         (record (make-immutable-hasheq rc)))))
-                    (define recf (delay (force+ rec)))
-                    rec))
-   'open (pm 2 (λ (envr r envx x)
-                 (unlazy
-                  (eeval envr r)
-                  (λ (r)
-                    (eeval (env+record envx r) x)))))
-   ': (pm 2 (λ (envr r envx x)
-              (unlazy
-               (eeval envr r)
-               (λ (r)
-                 (unlazy
-                  x
-                  (λ (s)
-                    (hash-ref (record-v r) s (λ () (err undefined ': (list r s) (list envr envx))))))))))
-   ))
+  (cload
+   prelude
+   (newenv
+    'λ (pm 2 (λ (envs s envx x)
+               (unlazy
+                s
+                (λ (s)
+                  (if (symbol? s)
+                      (func (λ (env a)
+                              (eeval (env-set envx s (eeval env a)) x)))
+                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
+    'λ... (pm 2 (λ (envs s envx x)
+                  (unlazy
+                   s
+                   (λ (s)
+                     (if (symbol? s)
+                         (func... (λ (env as)
+                                    (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
+                         (err syntaxerr 'λ... (list s x) (list envs envx)))))))
+    'true #t
+    'false #f
+    'quote (pm 1 (λ (env x) x))
+    'cons (pf 2 cons)
+    'car (p 1 car)
+    'cdr (p 1 cdr)
+    '+ (p 2 +)
+    '- (p 2 -)
+    '* (p 2 *)
+    '/ (p 2 /)
+    '< (p 2 <)
+    '> (p 2 >)
+    '=< (p 2 <=)
+    '>= (p 2 >=)
+    '= (pf 2 (λ (x y) (ceq? x y (λ () true))))
+    '=/= (pf 2 (λ (x y) (unlazy (ceq? x y (λ () true)) not)))
+    'not (p 1 not)
+    'list (pf... (λ (xs) xs))
+    'record (pm... (λ (env xs)
+                     (define newenv
+                       (delay
+                         (env-set (env-append env (force+ rc)) '_< rec)))
+                     (define newenv+
+                       (delay
+                         (env-at+ (force newenv) recf)))
+                     (define rc
+                       (delay
+                         (mkpair
+                          xs
+                          (λ (ps)
+                            (map (λ (p)
+                                   (let ([s (car p)])
+                                     (if (symbol? s)
+                                         (cons s (delay (eeval (env-at+ (force newenv+) s) (cdr p))))
+                                         (err syntaxerr 'record xs env)))) ps)))))
+                     (define rec
+                       (unlazy
+                        rc
+                        (λ (rc)
+                          (record (make-immutable-hasheq rc)))))
+                     (define recf (delay (force+ rec)))
+                     rec))
+    'open (pm 2 (λ (envr r envx x)
+                  (unlazy
+                   (eeval envr r)
+                   (λ (r)
+                     (eeval (env+record envx r) x)))))
+    ': (pm 2 (λ (envr r envx x)
+               (unlazy
+                (eeval envr r)
+                (λ (r)
+                  (unlazy
+                   x
+                   (λ (s)
+                     (hash-ref (record-v r) s (λ () (err undefined ': (list r s) (list envr envx))))))))))
+    'choice2 (pf 3 (λ (x y f)
+                     (choice2 x y (λ (x y) (capply f (list x y))))))
+    'if (pf 3 (λ (c t f) (unlazy c (λ (c) (if c t f)))))
+    )))
+
+(define (capply f xs) (aapply genv f (lmap (λ (x) (list 'quote x)) xs)))
+
+(struct choice2-_!_ (v))
+(define (choice2 x y f)
+  (if (promise? x)
+      (delay (let ([nx (with-handlers ([(λ (x) true) choice2-_!_])
+                         (force x))])
+               (if (choice2-_!_? nx)
+                   (f y (delay (raise (choice2-_!_-v nx))))
+                   (choice2 y nx f))))
+      (f x y)))
