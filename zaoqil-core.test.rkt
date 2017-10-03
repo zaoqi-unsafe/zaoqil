@@ -28,3 +28,6 @@
 (e (cons 0 0) (cons 0 0))
 (e (car ((cons 'a) 'b)) 'a)
 (e (list ((+ 1) 2) 0) '(3 0))
+(e (: (record x (+ 0 0)) x) 0)
+(e (: (record f (λ... xs xs)) f 'a) '(a))
+(e (((open (record f (λ... xs xs))) f) 'a) '(a))

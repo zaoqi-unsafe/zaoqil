@@ -14,6 +14,15 @@
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 (provide core)
+(define-syntax-rule (deft (f x ...) v)
+  (define (f x ...)
+    (writeln (list (quote f) (force+ x) ...))
+    (let ([r v])
+      (let ([rf (force+ r)])
+        (write (list (quote f) (force+ x) ...))
+        (display " => ")
+        (writeln rf)
+        r))))
 
 (define prelude-sexp
   '(record
@@ -39,6 +48,7 @@
                             >> (λ x (λ y (>>= x (λ (i) y))))
                           putstrln (λ s (>> (: io putstr s) (: io newline)))))
     ))
+(define fold foldl)
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -48,27 +58,34 @@
       (delay (unlazy (force x) f))
       (f x)))
 
-; U undefined notfunction → Symbol → Exp → Env
+; U undefined notfunction → Symbol → Exp → [Env] → CompileErr
 (struct compile-error (t f x e) #:transparent)
 (define undefined 'undefined)
 (define notfunction 'notfunction)
 (define noarg 'noarg)
 (define toomanyarg 'toomanyarg)
+(define syntaxerr 'syntax)
 (struct left (x))
 ; Nothing = Left ()
 (define (err t f x e) (raise (compile-error t f x e)))
 
-; Hash Symbol Any → [U (File : String) Symbol (Line : Nat)] → Envr
+; String → Nat → [U Symbol (Promise+ Record)] → U Symbol (Promise+ Record) → At
+(struct at (file line s x))
+(define (at+ x s) (at (at-file x) (at-line x) (cons (at-x x) (at-s x)) s))
+; Hash Symbol Any → At → Envr
 (struct envr (x at))
-(define (newenv . xs) (envr (apply hasheq xs) '('_)))
+(define (newenv . xs)
+  (let ([x (apply hasheq xs)])
+    (envr x (at "" 0 '() x))))
 (define (env-set e s x) (envr (hash-set (envr-x e) s x) (envr-at e)))
 (define (env-has? e s) (hash-has-key? (envr-x e) s))
 (define (env-ref e s t) (hash-ref (envr-x e) s t))
+(define (env-at+ e x) (envr (envr-x e) (at+ (envr-at e) x)))
 
 ; Env → Exp → Any
-(struct func (v))
+(struct func (v) #:transparent)
 ; Env → Stream Exp → Any
-(struct func... (v))
+(struct func... (v) #:transparent)
 
 (define (eeval env x)
   (delay
@@ -93,18 +110,16 @@
                (unlazy
                 ((func-v f) env (car xs))
                 (λ (r)
-                  (if (func...? r)
-                      (aapply env r (cdr xs))
-                      (unlazy
-                       (cdr xs)
-                       (λ (d)
-                         (cond
-                           [(null? d) r]
-                           [(func? r) (aapply env r d)]
-                           [else (err toomanyarg 'apply (list f (cons (car xs) d)) env)]))))))
+                  (unlazy
+                   (cdr xs)
+                   (λ (d)
+                     (cond
+                       [(null? d) r]
+                       [(or (func...? r) (func? r)) (aapply env r d)]
+                       [else (err toomanyarg 'apply (list f (cons (car xs) d)) env)])))))
                (err noarg 'apply (list f xs) env))))]
        [(func...? f) ((func...-v f) env xs)]
-       [else (err notfunction 'apply (list f xs))]))))
+       [else (err notfunction 'apply (list f xs) env)]))))
 
 
 (define (force+ x)
@@ -131,6 +146,13 @@
           (cdr xs)
           (λ (d)
             (f (cons (car xs) d))))))))
+(define (lmap f xs)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         '()
+         (cons (f (car xs)) (lmap f (cdr xs)))))))
 
 (define (from-racket-value x)
   (cond
@@ -189,8 +211,40 @@
           [(number? x) (and (number? y) (= x y) (c))]
           [else (and (equal? x y) (c))]))))))
 
+; Hash Symbol Any → Record
+(struct record (v))
+(define (mkpair xs f)
+  (if (null? xs)
+      (f '())
+      (unlazy
+       (car xs)
+       (λ (s)
+         (mkpair (cddr xs)
+                 (λ (d)
+                   (f (cons (cons s (cadr xs)) d))))))))
+(define (env-append env ps)
+  (fold (λ (p env) (env-set env (car p) (cdr p))) env ps))
+(define (env+record env r)
+  (env-append env (hash->list (record-v r))))
+
 (define genv
   (newenv
+   'λ (pm 2 (λ (envs s envx x)
+              (unlazy
+               s
+               (λ (s)
+                 (if (symbol? s)
+                     (func (λ (env a)
+                             (eeval (env-set envx s (eeval env a)) x)))
+                     (err syntaxerr 'λ (list s x) (list envs envx)))))))
+   'λ... (pm 2 (λ (envs s envx x)
+                 (unlazy
+                  s
+                  (λ (s)
+                    (if (symbol? s)
+                        (func... (λ (env as)
+                                   (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
+                        (err syntaxerr 'λ... (list s x) (list envs envx)))))))
    'true #t
    'false #f
    'quote (pm 1 (λ (env x) x))
@@ -209,4 +263,41 @@
    '=/= (pf 2 (λ (x y) (unlazy (ceq? x y (λ () true)) not)))
    'not (p 1 not)
    'list (pf... (λ (xs) xs))
+   'record (pm... (λ (env xs)
+                    (define newenv
+                      (delay
+                        (env-set (env-append env (force+ rc)) '_< rec)))
+                    (define newenv+
+                      (delay
+                        (env-at+ (force newenv) recf)))
+                    (define rc
+                      (delay
+                        (mkpair
+                         xs
+                         (λ (ps)
+                           (map (λ (p)
+                                  (let ([s (car p)])
+                                    (if (symbol? s)
+                                        (cons s (delay (eeval (env-at+ (force newenv+) s) (cdr p))))
+                                        (err syntaxerr 'record xs env)))) ps)))))
+                    (define rec
+                      (unlazy
+                       rc
+                       (λ (rc)
+                         (record (make-immutable-hasheq rc)))))
+                    (define recf (delay (force+ rec)))
+                    rec))
+   'open (pm 2 (λ (envr r envx x)
+                 (unlazy
+                  (eeval envr r)
+                  (λ (r)
+                    (eeval (env+record envx r) x)))))
+   ': (pm 2 (λ (envr r envx x)
+              (unlazy
+               (eeval envr r)
+               (λ (r)
+                 (unlazy
+                  x
+                  (λ (s)
+                    (hash-ref (record-v r) s (λ () (err undefined ': (list r s) (list envr envx))))))))))
    ))
