@@ -45,7 +45,7 @@
     pred (- 1)
     prelude/io (require io
                         (module
-                            >> (λ x (λ y (>>= x (λ (i) y))))
+                            >> (λ x (λ y (: io >>= x (λ i y))))
                           putstrln (λ s (>> (: io putstr s) (: io newline)))))
     ))
 (define fold foldl)
@@ -324,7 +324,7 @@
                       m
                       (λ (m)
                         (cond
-                          [(env-has? envm m) (eeval (env-set envx m (env-ref envm m)) x)]
+                          [(env-has? envm m) (eeval (env-set envx m (env-ref envm m (λ () (error '!)))) x)]
                           [(eq? m 'io) (eeval (env-set envx 'io io) x)]
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     )))

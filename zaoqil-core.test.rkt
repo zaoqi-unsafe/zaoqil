@@ -34,3 +34,4 @@
 (e (or #t #f) #t)
 (e (= (record x 0 y x) (record y x x 0)) true)
 (e (require io (open io (return 'a))) 'a)
+(e (require prelude/io (open prelude/io (>> (putstrln "hello") (putstrln "world")))) '())
