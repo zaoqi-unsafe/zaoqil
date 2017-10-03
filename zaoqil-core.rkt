@@ -27,6 +27,7 @@
 (define prelude
   '(record
     module record
+    list (λ... xs xs)
     id (λ x x)
     or (λ x (λ y (choice2 x y (λ x (λ y (if x true y))))))
     and (λ x (λ y (choice2 x y (λ x (λ y (if x y false))))))
@@ -250,6 +251,14 @@
                       (func (λ (env a)
                               (eeval (env-set envx s (eeval env a)) x)))
                       (err syntaxerr 'λ (list s x) (list envs envx)))))))
+    'λmacro (pm 2 (λ (envs s envx x)
+               (unlazy
+                s
+                (λ (s)
+                  (if (symbol? s)
+                      (func (λ (env a)
+                              (eeval env (eeval (env-set envx s a) x))))
+                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
     'λ... (pm 2 (λ (envs s envx x)
                   (unlazy
                    s
@@ -258,7 +267,14 @@
                          (func... (λ (env as)
                                     (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
                          (err syntaxerr 'λ... (list s x) (list envs envx)))))))
-
+    'λ...macro (pm 2 (λ (envs s envx x)
+                  (unlazy
+                   s
+                   (λ (s)
+                     (if (symbol? s)
+                         (func... (λ (env as)
+                                    (eeval env (eeval (env-set envx s as) x))))
+                         (err syntaxerr 'λ... (list s x) (list envs envx)))))))
     'λ? (p 1 func?)
     'λ...? (p 1 func...?)
     'true #t
@@ -267,6 +283,9 @@
     'cons (pf 2 cons)
     'car (p 1 car)
     'cdr (p 1 cdr)
+    'null? (p 1 null?)
+    'number? (p 1 number?)
+    'pair? (p 1 pair?)
     '+ (p 2 +)
     '- (p 2 -)
     '* (p 2 *)
