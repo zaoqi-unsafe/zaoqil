@@ -171,7 +171,7 @@
        (make-immutable-hasheq
         (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
              (hash->list (record-v x))))]
-      ;[(io? x) (force+ (runio x to-racket-value))]
+      [(io? x) (force+ (runio x to-racket-value))]
       [else x])))
 
 (define (core x) (to-racket-value (eeval genv x)))
