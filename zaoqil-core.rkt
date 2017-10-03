@@ -121,6 +121,16 @@
           (cdr xs)
           (λ (d)
             (f (cons a d))))))))
+(define (unlazystream xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazystream
+          (cdr xs)
+          (λ (d)
+            (f (cons (car xs) d))))))))
 
 (define (from-racket-value x)
   (cond
@@ -156,7 +166,9 @@
               (makef (pred n) (λ (xs)
                                 (f (cons (eeval env x) xs))))))))
 (define (pm n f) (makefunc n (λ (xs) (apply f xs))))
+(define pm... func...)
 (define (pf n f) (makef n (λ (xs) (apply f xs))))
+(define (pf... f) (func... (λ (env xs) (unlazystream xs (λ (xs) (f (map (λ (x) (eeval env x)) xs)))))))
 (define (p n f) (makef n (λ (xs) (unlazy... xs (λ (xs) (apply f xs))))))
 
 (define (ceq? x y c)
@@ -196,4 +208,5 @@
    '= (pf 2 (λ (x y) (ceq? x y (λ () true))))
    '=/= (pf 2 (λ (x y) (unlazy (ceq? x y (λ () true)) not)))
    'not (p 1 not)
+   'list (pf... (λ (xs) xs))
    ))

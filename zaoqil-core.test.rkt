@@ -26,5 +26,5 @@
 (e 'true 'true)
 (e true #t)
 (e (cons 0 0) (cons 0 0))
-(e (car (cons 'a 'b)) 'a)
-(e ((+ 1) 2) 3)
+(e (car ((cons 'a) 'b)) 'a)
+(e (list ((+ 1) 2) 0) '(3 0))
