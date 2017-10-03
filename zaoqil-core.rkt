@@ -242,6 +242,8 @@
   (cload
    prelude
    (newenv
+    'eval (pm 1 (λ (env x) (eeval env (eeval env x))))
+    'apply (pf 1 capply)
     'λ (mkλ func 'λ)
     'λ... (mkλ func... 'λ...)
     'λ? (p 1 func?)
