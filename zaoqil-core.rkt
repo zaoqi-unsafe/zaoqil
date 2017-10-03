@@ -140,10 +140,18 @@
       (func (λ (env x)
               (makefunc (pred n) (λ (xs)
                                    (f (cons env (cons x xs)))))))))
-(define (pmacro n f) (makefunc n (λ (xs) (apply f xs))))
+(define (makef n f)
+  (if (zero? n)
+      (f '())
+      (func (λ (env x)
+              (makef (pred n) (λ (xs)
+                                (f (cons (eeval env x) xs))))))))
+(define (pm n f) (makefunc n (λ (xs) (apply f xs))))
+(define (pf n f) (makef n (λ (xs) (apply f xs))))
 
 (define genv
   (newenv
    'true #t
    'false #f
-   'quote (pmacro 1 (λ (env x) x))))
+   'quote (pm 1 (λ (env x) x))
+   'cons (pf 2 cons)))

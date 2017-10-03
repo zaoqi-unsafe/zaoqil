@@ -25,3 +25,4 @@
 
 (e 'true 'true)
 (e true #t)
+(e (cons 0 0) (cons 0 0))
