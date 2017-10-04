@@ -36,3 +36,4 @@
 (e (require io (open io (return 'a))) 'a)
 (e (require prelude/io (open prelude/io (>> (putstrln "hello") (putstrln "world")))) '())
 (e ((λ...macro xs (list 'quote xs)) (+ 1 1) (+ 2 2)) '((+ 1 1) (+ 2 2)))
+(e (list? "str") #t)
