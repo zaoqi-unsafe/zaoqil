@@ -48,6 +48,11 @@
                         (module
                             >> (λ x (λ y (: io >>= x (λ i y))))
                           putstrln (λ s (>> (: io putstr s) (: io newline)))))
+    string? (λ x
+              (and (pair? x)
+                   (and (char? (car x))
+                        (or (null? (cdr x))
+                            (string? (cdr x))))))
     ))
 (define fold foldl)
 
@@ -97,6 +102,7 @@
        (cond
          [(symbol? x) (env-ref env x (λ () (err undefined 'eval x env)))]
          [(pair? x) (aapply env (eeval env (car x)) (cdr x))]
+         [(string? x) (string->list x)]
          [else x])))))
 ; Env → Any → Stream Exp → Any
 (define (aapply env f xs)
@@ -155,6 +161,8 @@
      (if (null? xs)
          '()
          (cons (f (car xs)) (lmap f (cdr xs)))))))
+(define (unlazy* xs f)
+  (unlazystream xs (λ (xs) (unlazy... xs f))))
 
 (define (from-racket-value x)
   (cond
@@ -177,7 +185,21 @@
         (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
              (hash->list (record-v x))))]
       [(io? x) (force+ (runio x to-racket-value))]
+      [(str2rkt? x) => (λ (r) r)]
       [else x])))
+(define (str2rkt? x)
+  (let ([r (%str2rkt? x)])
+    (and
+     r
+     (not (null? r))
+     (list->string r))))
+(define (%str2rkt? x)
+  (let ([x (force+ x)])
+    (if (null? x)
+        '()
+        (and (pair? x)
+             (char? (car x))
+             (cons (car x) (%str2rkt? (cdr x)))))))
 
 (define (core x) (to-racket-value (eeval genv x)))
 
@@ -252,13 +274,13 @@
                               (eeval (env-set envx s (eeval env a)) x)))
                       (err syntaxerr 'λ (list s x) (list envs envx)))))))
     'λmacro (pm 2 (λ (envs s envx x)
-               (unlazy
-                s
-                (λ (s)
-                  (if (symbol? s)
-                      (func (λ (env a)
-                              (eeval env (eeval (env-set envx s a) x))))
-                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
+                    (unlazy
+                     s
+                     (λ (s)
+                       (if (symbol? s)
+                           (func (λ (env a)
+                                   (eeval env (eeval (env-set envx s a) x))))
+                           (err syntaxerr 'λ (list s x) (list envs envx)))))))
     'λ... (pm 2 (λ (envs s envx x)
                   (unlazy
                    s
@@ -268,13 +290,13 @@
                                     (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
                          (err syntaxerr 'λ... (list s x) (list envs envx)))))))
     'λ...macro (pm 2 (λ (envs s envx x)
-                  (unlazy
-                   s
-                   (λ (s)
-                     (if (symbol? s)
-                         (func... (λ (env as)
-                                    (eeval env (eeval (env-set envx s as) x))))
-                         (err syntaxerr 'λ... (list s x) (list envs envx)))))))
+                       (unlazy
+                        s
+                        (λ (s)
+                          (if (symbol? s)
+                              (func... (λ (env as)
+                                         (eeval env (eeval (env-set envx s as) x))))
+                              (err syntaxerr 'λ... (list s x) (list envs envx)))))))
     'λ? (p 1 func?)
     'λ...? (p 1 func...?)
     'true #t
@@ -285,6 +307,7 @@
     'cdr (p 1 cdr)
     'null? (p 1 null?)
     'number? (p 1 number?)
+    'char? (pf 1 char?)
     'pair? (p 1 pair?)
     '+ (p 2 +)
     '- (p 2 -)
@@ -468,7 +491,7 @@
                                     (iobind-f x)
                                     (λ (x)
                                       (runio (capply x (list r)) f)))))]
-       [(ioputstr? x) (unlazy (ioputstr-x x) (λ (s) (display s) (f '())))]
+       [(ioputstr? x) (unlazy* (ioputstr-x x) (λ (s) (display (list->string s)) (f '())))]
        [(ionewline? x) (newline) (f '())]
        [(iocall/ccv? x) x]
        [(iocall/cc? x) (runio (iocall/cc-x x)
