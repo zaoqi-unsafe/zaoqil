@@ -311,29 +311,26 @@
     'not (p 1 not)
     'list (pf... (λ (xs) xs))
     'record (pm... (λ (env xs)
-                     (define newenv
-                       (delay
-                         (env-set (env-append env (force+ rc)) '_< rec)))
-                     (define newenv+
-                       (delay
-                         (env-at+ (force newenv) recf)))
-                     (define rc
-                       (delay
-                         (mkpair
-                          xs
-                          (λ (ps)
-                            (map (λ (p)
-                                   (let ([s (car p)])
-                                     (if (symbol? s)
-                                         (cons s (delay (eeval (env-at+ (force newenv+) s) (cdr p))))
-                                         (err syntaxerr 'record xs env)))) ps)))))
-                     (define rec
-                       (unlazy
-                        rc
-                        (λ (rc)
-                          (record (make-immutable-hasheq rc)))))
-                     (define recf (delay (force+ rec)))
-                     rec))
+                     (letrec
+                         ([newenv (delay
+                                    (env-set (env-append env (force+ rc)) '_< rec))]
+                          [newenv+ (delay
+                                     (env-at+ (force newenv) recf))]
+                          [rc (delay
+                                (mkpair
+                                 xs
+                                 (λ (ps)
+                                   (map (λ (p)
+                                          (let ([s (car p)])
+                                            (if (symbol? s)
+                                                (cons s (delay (eeval (env-at+ (force newenv+) s) (cdr p))))
+                                                (err syntaxerr 'record xs env)))) ps))))]
+                          [rec (unlazy
+                                rc
+                                (λ (rc)
+                                  (record (make-immutable-hasheq rc))))]
+                          [recf (delay (force+ rec))])
+                       rec)))
     'open (pm 2 (λ (envr r envx x)
                   (unlazy
                    (eeval envr r)
