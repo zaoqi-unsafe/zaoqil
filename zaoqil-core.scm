@@ -18,8 +18,8 @@
     module record
     list (λ... xs xs)
     id (λ x x)
-    or (λ x (λ y (choice2 x y (λ x (λ y (if x true y))))))
-    and (λ x (λ y (choice2 x y (λ x (λ y (if x y false))))))
+    or (λ2 x y (if x true y))
+    and (λ2 x y (if x y false))
     list? (λ xs (or (null? xs) (list? (cdr xs))))
     map (λ f (λ xs
                (if (null? xs)
@@ -46,6 +46,13 @@
                 (list 'λmacro 'x
                       (list 'list 'open (cons 'record xs)
                             'x)))
+    λ2 (λmacro s1 (λmacro s2 (λmacro x  ;非pair?，不会eval
+                                     (list 'λ s1
+                                           (list 'λ s2
+                                                 (list 'choice2 s1 s2
+                                                       (list 'λ s1
+                                                             (list 'λ s2
+                                                                   x))))))))
     ))
 
 (define (succ x) (+ 1 x))

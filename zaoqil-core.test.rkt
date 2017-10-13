@@ -32,6 +32,8 @@
 (e (: (record f (λ... xs xs)) f 'a) '(a))
 (e (((open (record f (λ... xs xs))) f) 'a) '(a))
 (e (or #t #f) #t)
+(e (and #f (: (record x x) x)) #f)
+(e (and (: (record x x) x) #f) #f)
 (e (= (record x 0 y x) (record y x x 0)) true)
 (e (require io (open io (return 'a))) 'a)
 (e (require prelude/io (open prelude/io (>> (putstrln "hello") (putstrln "world")))) '())
