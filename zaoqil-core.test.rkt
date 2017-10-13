@@ -47,4 +47,4 @@
          false)) 0)
 
 (load-file 'mk "mk.core")
-(e (open mk ((call/fresh (λ v1 (call/fresh (λ v2 (== v1 v2))))) empty-state)) 0)
+;(e (open mk ((call/fresh (λ v1 (call/fresh (λ v2 (== v1 v2))))) empty-state)) '(((#hasheq((id . g24619)) . #hasheq((id . g24620))))))
