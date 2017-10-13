@@ -40,3 +40,4 @@
 (e ((λ...macro xs (list 'quote xs)) (+ 1 1) (+ 2 2)) '((+ 1 1) (+ 2 2)))
 (e (list? "str") #t)
 (e (let (x 0 y x) y) 0)
+(e (car (: listmonad mplus (: (record x x) x) (list 0))) 0)
