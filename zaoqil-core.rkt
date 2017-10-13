@@ -13,7 +13,7 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-(provide core)
+(provide core load-file)
 (define-syntax-rule (deft (f x ...) v)
   (define (f x ...)
     (writeln (list (quote f) (force+ x) ...))
@@ -23,5 +23,9 @@
         (display " => ")
         (writeln rf)
         r))))
+
+(define (read-file f) (read (open-input-file f)))
+(define (load-file s f)
+  (set! genv (env-set genv s (eeval genv (read-file f)))))
 
 (include "zaoqil-core.scm")
