@@ -21,7 +21,7 @@
     (write x p)
     (get-output-string p)))
 
-(define-syntax-rule (e x y) (check-equal? (core (quote x)) y (show (quote x))))
+(define-syntax-rule (e x y) (check-equal? (call-with-exception-handler (λ (v) (writeln v)) (λ () (core (quote x)))) y (show (quote x))))
 
 (e 'true 'true)
 (e true #t)
@@ -41,6 +41,10 @@
 (e (list? "str") #t)
 (e (let (x 0 y x) (+ y 1)) 1)
 (e (car (: listmonad mplus (: (record x x) x) (list 0))) 0)
+(e (let (x 0)
+     (if x
+         x
+         false)) 0)
 
 (load-file 'mk "mk.core")
 (e (open mk ((call/fresh (λ v1 (call/fresh (λ v2 (== v1 v2))))) empty-state)) 0)

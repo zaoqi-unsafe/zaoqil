@@ -18,7 +18,7 @@
           call/fresh (λ f
                        (gensym
                         (λ s
-                          (f (struct var id x)))))
+                          (f (struct var id s)))))
         disj (λ2 g1 g2 (λ s (mplus (g1 s) (g2 s))))
         conj (λ2 g1 g2 (λ s (bind (g1 s) g2)))
         get (λ s (λ xs (λ d (λ t

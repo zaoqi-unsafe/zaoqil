@@ -103,10 +103,10 @@
 (define (err t f x e) (raise (compile-error t f x e)))
 
 ; String → Nat → [U Symbol (Promise+ Record)] → U Symbol (Promise+ Record) → At
-(struct at (file line s x))
+(struct at (file line s x) #:transparent)
 (define (at+ x s) (at (at-file x) (at-line x) (cons (at-x x) (at-s x)) s))
 ; Hash Symbol Any → At → Envr
-(struct envr (x at))
+(struct envr (x at) #:transparent)
 (define (newenv . xs)
   (let ([x (apply hasheq xs)])
     (envr x (at "" 0 '() x))))
