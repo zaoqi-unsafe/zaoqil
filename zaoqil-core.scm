@@ -12,6 +12,12 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+(define (memorize f)
+  (let ([m (make-weak-hash)])
+    (λ args (hash-ref m args (λ ()
+                               (let ([v (apply f args)])
+                                 (hash-set! m args v)
+                                 v))))))
 
 (define prelude
   '(record
@@ -62,10 +68,13 @@
                                 (mplus (f (car xs)) (bind f (cdr xs))))))
                 mplus (λ2 xs ys (if (null? xs) ys (cons (car xs) (mplus ys (cdr xs))))))
     struct (λ...macro xs
-                      (cons 'record
-                            (cons '_:
-                                  (cons (list 'cons '_< (car xs))
-                                        (cdr xs)))))
+                      (gensym
+                       (λ x
+                         (list (list 'λ x
+                                     (cons 'record
+                                           (cons '_:
+                                                 (cons (list 'cons x (car xs))
+                                                       (cdr xs))))) '_<))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -195,7 +204,8 @@
       [(record? x)
        (make-immutable-hasheq
         (map (λ (p) (cons (car p) (to-racket-value (cdr p))))
-             (hash->list (record-v x))))]
+             (filter-not (λ (p) (eq? (car p) '_:))
+                         (hash->list (record-v x)))))]
       [(io? x) (force+ (runio x to-racket-value))]
       [(str2rkt? x) => (λ (r) r)]
       [else x])))
@@ -385,6 +395,7 @@
                           [(eq? m 'io) (eeval (env-set envx 'io io) x)]
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     'record->list (p 1 (λ (r) (hash->list (record-v r))))
+    'gensym (p 1 (memorize (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
     )))
 
 (struct choice2-_!_ (v))
