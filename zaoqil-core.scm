@@ -488,9 +488,9 @@
        [(iocall/ccv? x) x]
        [(iocall/cc? x) (runio (iocall/cc-x x)
                               (λ (r)
-                                (if (equal? (iocall/ccv-id r) (iocall/cc-id x))
+                                (if (and (iocall/ccv? r) (equal? (iocall/ccv-id r) (iocall/cc-id x)))
                                     (f (iocall/ccv-x r))
-                                    (err syntaxerr 'runio (list x f) '()))))]
+                                    (f r))))]
        [(ioread-line? x) (f (read-line))]
        [else (err syntaxerr 'runio (list x f) '())]))))
 (define io
