@@ -73,8 +73,13 @@
                          (list (list 'λ x
                                      (cons 'record
                                            (cons '_:
-                                                 (cons (list 'cons x (car xs))
+                                                 (cons (list 'cons x (list 'quote (car xs)))
                                                        (cdr xs))))) '_<))))
+    struct? (λmacro s
+                    (gensym
+                     (λ x
+                       (list 'λ x
+                             (list '= (list '_:? x) (list 'cons '_< (list 'quote s)))))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -252,6 +257,7 @@
       y
       (λ (y)
         (cond
+          [(equal? x y) (c)]
           [(pair? x) (and (pair? y)
                           (ceq? (car x) (car y)
                                 (λ ()
@@ -260,7 +266,7 @@
           [(record? x) (and (record? y)
                             (ceq? (hash->list (record-v x)) (hash->list (record-v y)) c))]
           [(number? x) (and (number? y) (= x y) (c))]
-          [else (and (equal? x y) (c))]))))))
+          [else false]))))))
 
 ; Hash Symbol Any → Record
 (struct record (v))
@@ -396,6 +402,7 @@
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     'record->list (p 1 (λ (r) (hash->list (record-v r))))
     'gensym (p 1 (memorize (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
+    '_:? (p 1 (λ (r) (hash-ref (record-v r) '_: false)))
     )))
 
 (struct choice2-_!_ (v))

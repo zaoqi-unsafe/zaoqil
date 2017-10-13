@@ -13,5 +13,22 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-(module
+(open listmonad
+      (module
+    call/fresh (λ f
+                 (gensym
+                  (λ s
+                    (f (struct var id x)))))
+  disj (λ2 g1 g2 (λ s (mplus (g1 s) (g2 s))))
+        conj (λ2 g1 g2 (λ s (bind (g1 s) g2)))
+        get (λ s (λ xs (λ d (λ t
+                         (if (null? xs)
+                             d
+                             (if (= (car (car xs)) s)
+                                 (t (cdr (car xs)))
+                                 (get s (cdr xs) d)))))))
+        walk (λ s (λ x (get x s s (walk s))))
+        ext-s (λ x (λ v (λ s (cons (cons x v) s))))
+        unify (λ s (λ x (λ y
+                          (if (and (struct? var x) (struct? var y))
     )
