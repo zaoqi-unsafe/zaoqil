@@ -42,8 +42,11 @@
                    (and (char? (car x))
                         (or (null? (cdr x))
                             (string? (cdr x))))))
+    let (λmacro xs
+                (list 'λmacro 'x
+                      (list 'list 'open (cons 'record xs)
+                            'x)))
     ))
-(define fold foldl)
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -232,16 +235,19 @@
 ; Hash Symbol Any → Record
 (struct record (v))
 (define (mkpair xs f)
-  (if (null? xs)
-      (f '())
-      (unlazy
-       (car xs)
-       (λ (s)
-         (mkpair (cddr xs)
-                 (λ (d)
-                   (f (cons (cons s (cadr xs)) d))))))))
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazy
+          (car xs)
+          (λ (s)
+            (mkpair (cddr xs)
+                    (λ (d)
+                      (f (cons (cons s (cadr xs)) d))))))))))
 (define (env-append env ps)
-  (fold (λ (p env) (env-set env (car p) (cdr p))) env ps))
+  (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
 (define (env+record env r)
   (env-append env (hash->list (record-v r))))
 (define (cload e env) (env+record env (force+ (eeval env e))))
