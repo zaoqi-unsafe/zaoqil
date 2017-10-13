@@ -403,7 +403,7 @@
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     'record->list (p 1 (λ (r) (hash->list (record-v r))))
     'gensym (p 1 (memorize (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
-    '_:? (p 1 (λ (r) (hash-ref (record-v r) '_: false)))
+    '_:? (p 1 (λ (r) (and (record? r) (hash-ref (record-v r) '_: false))))
     )))
 
 (struct choice2-_!_ (v))
