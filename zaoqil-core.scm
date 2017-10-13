@@ -55,12 +55,17 @@
                                                                    x))))))))
     listmonad (module
                   return (λ x (list x))
-                  >>= (λ xs (λ f (bind f xs)))
-                  bind (λ f (λ xs
-                              (if (null? xs)
-                                  '()
-                                  (mplus (f (car xs)) (bind f (cdr xs))))))
-                  mplus (λ2 xs ys (if (null? xs) ys (cons (car xs) (mplus ys (cdr xs))))))
+                >>= (λ xs (λ f (bind f xs)))
+                bind (λ f (λ xs
+                            (if (null? xs)
+                                '()
+                                (mplus (f (car xs)) (bind f (cdr xs))))))
+                mplus (λ2 xs ys (if (null? xs) ys (cons (car xs) (mplus ys (cdr xs))))))
+    struct (λ...macro xs
+                      (cons 'record
+                            (cons '_:
+                                  (cons (list 'cons '_< (car xs))
+                                        (cdr xs)))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -258,9 +263,12 @@
          (unlazy
           (car xs)
           (λ (s)
-            (mkpair (cddr xs)
-                    (λ (d)
-                      (f (cons (cons s (cadr xs)) d))))))))))
+            (unlazy
+             (cdr xs)
+             (λ (dd)
+               (mkpair (cdr dd)
+                       (λ (d)
+                         (f (cons (cons s (car dd)) d))))))))))))
 (define (env-append env ps)
   (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
 (define (env+record env r)
@@ -376,6 +384,7 @@
                           [(env-has? envm m) (eeval (env-set envx m (env-ref envm m (λ () (error '!)))) x)]
                           [(eq? m 'io) (eeval (env-set envx 'io io) x)]
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
+    'record->list (p 1 (λ (r) (hash->list (record-v r))))
     )))
 
 (struct choice2-_!_ (v))
