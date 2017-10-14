@@ -12,13 +12,6 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-(define (memorize f)
-  (let ([m (make-weak-hash)])
-    (λ args (hash-ref m args (λ ()
-                               (let ([v (apply f args)])
-                                 (hash-set! m args v)
-                                 v))))))
-
 (define prelude
   '(record
     module record
@@ -50,7 +43,7 @@
                             (string? (cdr x))))))
     let (λmacro xs
                 (list 'λmacro 'x
-                      (list 'list 'open (cons 'record xs)
+                      (list 'list ''open (cons 'record xs)
                             'x)))
     λ2 (λmacro s1 (λmacro s2 (λmacro x  ;非pair?，不会eval
                                      (list 'λ s1
@@ -402,7 +395,7 @@
                           [(eq? m 'io) (eeval (env-set envx 'io io) x)]
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     'record->list (p 1 (λ (r) (hash->list (record-v r))))
-    'gensym (p 1 (memorize (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
+    'gensym (p 1 (memorize1 (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
     '_:? (p 1 (λ (r) (and (record? r) (hash-ref (record-v r) '_: false))))
     )))
 

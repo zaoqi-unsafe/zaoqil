@@ -28,4 +28,11 @@
 (define (load-file s f)
   (set! genv (env-set genv s (eeval genv (read-file f)))))
 
+(define (memorize1 f)
+  (let ([m (make-weak-hash)])
+    (λ (x) (hash-ref m x (λ ()
+                           (let ([v (f x)])
+                             (hash-set! m x v)
+                             v))))))
+
 (include "zaoqil-core.scm")
