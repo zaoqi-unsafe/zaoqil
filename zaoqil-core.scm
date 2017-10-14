@@ -42,7 +42,6 @@
     module+ record+
     io (import primio
                (module+ primio
-                 >> (λ x (λ y (>>= x (λ i y))))
                  putstrln (λ s (>> (putstr s) newline))))
     import (λmacro m (λmacro x
                              (list 'require m
@@ -85,6 +84,21 @@
                      (λ x
                        (list 'λ x
                              (list '= (list '_:? x) (list 'cons '_< (list 'quote s)))))))
+    do (let (%do (λ bind (λ xs
+                 (if (null? (cdr xs))
+                     (car xs)
+                     (if (= (car (cdr xs)) '<-)
+                         (list bind
+                               (car (cdr (cdr xs)))
+                               (list 'λ (car xs)
+                                     (%do bind (cdr (cdr (cdr xs))))))
+                         (gensym (λ i
+                                   (list bind (car xs)
+                                         (list 'λ i
+                                               (%do bind (cdr xs)))))))))))
+         (λ...macro xs
+                    (list 'open (car xs)
+                          (%do '>>= (cdr xs)))))
     ))
 
 (define (succ x) (+ 1 x))

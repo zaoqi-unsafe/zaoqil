@@ -36,7 +36,7 @@
 (e (and (: (record x x) x) #f) #f)
 (e (= (record x 0 y x) (record y x x 0)) true)
 (e (import io (return 'a)) 'a)
-(e (import io (>> (putstrln "hello") (putstrln "world"))) '())
+(e (import io (do io (putstrln "hello") (putstrln "world"))) '())
 (e ((λ...macro xs (list 'quote xs)) (+ 1 1) (+ 2 2)) '((+ 1 1) (+ 2 2)))
 (e (list? "str") #t)
 (e (let (x 0 y x) (+ y 1)) 1)
