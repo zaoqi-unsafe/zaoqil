@@ -41,10 +41,14 @@
                    (and (char? (car x))
                         (or (null? (cdr x))
                             (string? (cdr x))))))
-    let (λmacro xs
-                (list 'λmacro 'x
-                      (list 'list ''open (cons 'record xs)
-                            'x)))
+    let (λmacro xs ;Curry时有bug
+                (λmacro x
+                        (list 'open (cons 'record xs)
+                              x)))
+    letλ (λmacro s
+                 (λmacro v
+                         (λmacro x
+                                 (list (list 'λ s x) v))))
     λ2 (λmacro s1 (λmacro s2 (λmacro x  ;非pair?，不会eval
                                      (list 'λ s1
                                            (list 'λ s2
@@ -262,7 +266,7 @@
           [else false]))))))
 
 ; Hash Symbol Any → Record
-(struct record (v))
+(struct record (v) #:transparent)
 (define (mkpair xs f)
   (unlazy
    xs

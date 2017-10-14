@@ -48,9 +48,10 @@
                                                (unify s (record->list x) (record->list y))
                                                false)
                                            false)))))))
-        == (λ2 x y (λ s (si (unify s x y))))
-        si (λ x (if x
-                    (list x)
-                    '()))
+        == (λ2 x y (λ s
+                     (let (ns (unify s x y))
+                       (if ns
+                           (list ns)
+                           '()))))
         empty-state '()
         ))
