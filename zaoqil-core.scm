@@ -84,7 +84,9 @@
 
 (define (unlazy x f)
   (if (promise? x)
-      (delay (unlazy (force x) f))
+      (if (promise-forced? x)
+          (unlazy (force x) f)
+          (delay (unlazy (force x) f)))
       (f x)))
 
 ; U undefined notfunction → Symbol → Exp → [Env] → CompileErr
