@@ -16,6 +16,7 @@
   '(record
     λ (f e0 s (f env v (f argenv arg (eval+env (env-set env s (eval+env argenv arg)) v))))
     λmacro (f e0 s (f env v (f argenv arg (eval+env argenv (eval+env (env-set env s arg) v)))))
+    λ...macro (f e0 s (f env v (f... argenv arg (eval+env argenv (eval+env (env-set env s arg) v)))))
     module record
     list (λ... xs xs)
     id (λ x x)
@@ -309,7 +310,7 @@
                   (if (symbol? s)
                       (func (λ (env a)
                               (eeval (env-set (env-set envx s a) envs env) x)))
-                      (err syntaxerr 'f (list s x) (list envs envx)))))))
+                      (err syntaxerr 'f (list envs s x) (list e0 e1 envx)))))))
     'λ... (pm 2 (λ (envs s envx x)
                   (unlazy
                    s
@@ -318,14 +319,14 @@
                          (func... (λ (env as)
                                     (eeval (env-set envx s (lmap (λ (x) (eeval env x)) as)) x)))
                          (err syntaxerr 'λ... (list s x) (list envs envx)))))))
-    'λ...macro (pm 2 (λ (envs s envx x)
+    'f... (pm 3 (λ (e0 envs e1 s envx x)
                        (unlazy
                         s
                         (λ (s)
                           (if (symbol? s)
                               (func... (λ (env as)
-                                         (eeval env (eeval (env-set envx s as) x))))
-                              (err syntaxerr 'λ... (list s x) (list envs envx)))))))
+                                         (eeval (env-set (env-set envx s as) envs env) x)))
+                              (err syntaxerr 'f... (list envs s x) (list e0 e1 envx)))))))
     'λ? (p 1 func?)
     'λ...? (p 1 func...?)
     'true #t
