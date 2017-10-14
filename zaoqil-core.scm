@@ -15,6 +15,7 @@
 (define prelude
   '(record
     λ (f e0 s (f env v (f argenv arg (eval+env (env-set env s (eval+env argenv arg)) v))))
+    λmacro (f e0 s (f env v (f argenv arg (eval+env argenv (eval+env (env-set env s arg) v)))))
     module record
     list (λ... xs xs)
     id (λ x x)
@@ -309,14 +310,6 @@
                       (func (λ (env a)
                               (eeval (env-set (env-set envx s a) envs env) x)))
                       (err syntaxerr 'f (list s x) (list envs envx)))))))
-    'λmacro (pm 2 (λ (envs s envx x)
-                    (unlazy
-                     s
-                     (λ (s)
-                       (if (symbol? s)
-                           (func (λ (env a)
-                                   (eeval env (eeval (env-set envx s a) x))))
-                           (err syntaxerr 'λ (list s x) (list envs envx)))))))
     'λ... (pm 2 (λ (envs s envx x)
                   (unlazy
                    s
