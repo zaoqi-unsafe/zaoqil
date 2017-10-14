@@ -14,6 +14,7 @@
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 (define prelude
   '(record
+    λ (f e0 s (f env v (f argenv arg (eval+env (env-set env s (eval+env argenv arg)) v))))
     module record
     list (λ... xs xs)
     id (λ x x)
@@ -297,15 +298,17 @@
    prelude
    (newenv
     'eval (pm 1 (λ (env x) (eeval env (eeval env x))))
+    'eval+env (pf 2 (λ (env x) (unlazy env (λ (env) (eeval env x)))))
+    'env-set (pf 3 (λ (env s x) (unlazy env (λ (env) (unlazy s (λ (s) (env-set env s x)))))))
     'apply (pf 1 capply)
-    'λ (pm 2 (λ (envs s envx x)
+    'f (pm 3 (λ (e0 envs e1 s envx x)
                (unlazy
                 s
                 (λ (s)
                   (if (symbol? s)
                       (func (λ (env a)
-                              (eeval (env-set envx s (eeval env a)) x)))
-                      (err syntaxerr 'λ (list s x) (list envs envx)))))))
+                              (eeval (env-set (env-set envx s a) envs env) x)))
+                      (err syntaxerr 'f (list s x) (list envs envx)))))))
     'λmacro (pm 2 (λ (envs s envx x)
                     (unlazy
                      s
@@ -341,6 +344,7 @@
     'null? (p 1 null?)
     'number? (p 1 number?)
     'record? (p 1 record?)
+    'env? (p 1 envr?)
     'char? (p 1 char?)
     'pair? (p 1 pair?)
     '+ (p 2 +)
