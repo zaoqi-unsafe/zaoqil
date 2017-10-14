@@ -34,5 +34,5 @@
                            (let ([v (f x)])
                              (hash-set! m x v)
                              v))))))
-
+(require racket/hash)
 (include "zaoqil-core.scm")

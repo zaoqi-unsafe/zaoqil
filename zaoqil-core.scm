@@ -36,10 +36,18 @@
                           (filter f (cdr xs))))))
     succ (+ 1)
     pred (- 1)
-    prelude/io (require io
-                        (module
-                            >> (λ x (λ y (: io >>= x (λ i y))))
-                          putstrln (λ s (>> (: io putstr s) (: io newline)))))
+    record+ (λ r
+              (λ...macro x
+                      (list 'record-append r (cons 'record x))))
+    module+ record+
+    io (import primio
+                (module+ primio
+                    >> (λ x (λ y (: io >>= x (λ i y))))
+                  putstrln (λ s (>> (putstr s) newline))))
+    import (λmacro m (λmacro x
+                             (list 'require m
+                                   (list 'open m
+                                         x))))
     string? (λ x
               (and (pair? x)
                    (and (char? (car x))
@@ -375,6 +383,7 @@
                                   (record (make-immutable-hasheq rc))))]
                           [recf (delay (force+ rec))])
                        rec)))
+    'record-append (p 2 (λ (r1 r2) (record (hash-union (record-v r1) (record-v r2)))))
     'open (pm 2 (λ (envr r envx x)
                   (unlazy
                    (eeval envr r)
@@ -397,7 +406,7 @@
                       (λ (m)
                         (cond
                           [(env-has? envm m) (eeval (env-set envx m (env-ref envm m (λ () (error '!)))) x)]
-                          [(eq? m 'io) (eeval (env-set envx 'io io) x)]
+                          [(eq? m 'primio) (eeval (env-set envx 'primio io) x)]
                           [else (err syntaxerr 'require (list m x) (list envm envx))])))))
     'record->list (p 1 (λ (r) (hash->list (record-v r))))
     'gensym (p 1 (memorize1 (λ (f) (capply f (list (gensym)))))) ;尽量类似纯函数，所以最好不提供symbol->string
