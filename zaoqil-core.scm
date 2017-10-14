@@ -42,7 +42,7 @@
     module+ record+
     io (import primio
                 (module+ primio
-                    >> (λ x (λ y (: io >>= x (λ i y))))
+                    >> (λ x (λ y (>>= x (λ i y))))
                   putstrln (λ s (>> (putstr s) newline))))
     import (λmacro m (λmacro x
                              (list 'require m
