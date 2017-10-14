@@ -38,12 +38,12 @@
     pred (- 1)
     record+ (λ r
               (λ...macro x
-                      (list 'record-append r (cons 'record x))))
+                         (list 'record-append r (cons 'record x))))
     module+ record+
     io (import primio
-                (module+ primio
-                    >> (λ x (λ y (>>= x (λ i y))))
-                  putstrln (λ s (>> (putstr s) newline))))
+               (module+ primio
+                 >> (λ x (λ y (>>= x (λ i y))))
+                 putstrln (λ s (>> (putstr s) newline))))
     import (λmacro m (λmacro x
                              (list 'require m
                                    (list 'open m
@@ -53,14 +53,10 @@
                    (and (char? (car x))
                         (or (null? (cdr x))
                             (string? (cdr x))))))
-    let (λmacro xs ;Curry时有bug
-                (λmacro x
-                        (list 'open (cons 'record xs)
-                              x)))
-    letλ (λmacro s
-                 (λmacro v
-                         (λmacro x
-                                 (list (list 'λ s x) v))))
+    let (f xsenv xs
+           (λmacro x
+                   (list 'open (eval+env xsenv (cons 'record xs))
+                         x)))
     λ2 (λmacro s1 (λmacro s2 (λmacro x  ;非pair?，不会eval
                                      (list 'λ s1
                                            (list 'λ s2
