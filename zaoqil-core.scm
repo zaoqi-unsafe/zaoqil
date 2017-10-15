@@ -123,18 +123,18 @@
 ;(define-syntax-rule (err t f x e) (error 'err))
 (define (err t f x e) (raise (compile-error t f x e)))
 
-; String → Nat → [U Symbol (Promise Record)] → U Symbol (Promise Record) → At
-(struct at (file line s x) #:transparent)
-(define (at+ x s) (at (at-file x) (at-line x) (cons (at-x x) (at-s x)) s))
+; String → Nat → [U Symbol (Promise Record)] → At
+(struct at (file line s) #:transparent)
+(define (at+ x s) (at (at-file x) (at-line x) (cons s (at-s x))))
 ; Hash Symbol Any → At → Envr
-(struct envr (x at) #:transparent)
+(struct envr (at x) #:transparent)
 (define (newenv . xs)
   (let ([x (apply hasheq xs)])
-    (envr x (at "" 0 '() '_))))
-(define (env-set e s x) (envr (hash-set (envr-x e) s x) (envr-at e)))
+    (envr (at "" 0 '()) x)))
+(define (env-set e s x) (envr (envr-at e) (hash-set (envr-x e) s x)))
 (define (env-has? e s) (hash-has-key? (envr-x e) s))
 (define (env-ref e s t) (hash-ref (envr-x e) s t))
-(define (env-at+ e x) (envr (envr-x e) (at+ (envr-at e) x)))
+(define (env-at+ e x) (envr (at+ (envr-at e) x) (envr-x e)))
 
 ; Env → Exp → Any
 (struct func (v) #:transparent)
