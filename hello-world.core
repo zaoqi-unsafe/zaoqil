@@ -1,0 +1,1 @@
+(import io (do io (putstrln "hello") (putstrln "world")))
