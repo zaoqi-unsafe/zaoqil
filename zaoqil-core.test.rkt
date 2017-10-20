@@ -33,6 +33,7 @@
 (e (((open (record f (λ... xs xs))) f) 'a) '(a))
 (e (or #t #f) #t)
 (e (and #f (: (record x x) x)) #f)
+(e (and notavalue #f) #f)
 (e (and (: (record x x) x) #f) #f)
 (e (= (record x 0 y x) (record y x x 0)) true)
 (e (import io (return 'a)) 'a)

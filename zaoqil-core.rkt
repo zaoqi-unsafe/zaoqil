@@ -34,5 +34,7 @@
                            (let ([v (f x)])
                              (hash-set! m x v)
                              v))))))
+(define (with-exception-handler handler thunk)
+  (with-handlers ([(λ (x) #t) handler]) (thunk)))
 (require racket/hash)
 (include "zaoqil-core.scm")

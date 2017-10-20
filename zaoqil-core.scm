@@ -99,6 +99,16 @@
          (λ...macro xs
                     (list 'open (car xs)
                           (%do '>>= (cdr xs)))))
+    effect (module
+               return (λ x (struct return v x))
+             >>= (λ x (λ f (struct >>= x x f f))))
+    else (λ x true)
+    cond (λ... xs
+               (if (null? xs)
+                   0 ; Fix
+                   (if (car xs)
+                       (car (cdr xs))
+                       (apply cond (cdr (cdr xs))))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -427,8 +437,7 @@
 (struct choice2-_!_ (v))
 (define (choice2 x y f)
   (if (promise? x)
-      (delay (let ([nx (with-handlers ([(λ (x) true) choice2-_!_])
-                         (force x))])
+      (delay (let ([nx (with-exception-handler choice2-_!_ (λ () (force x)))])
                (if (choice2-_!_? nx)
                    (f y (delay (raise (choice2-_!_-v nx))))
                    (choice2 y nx f))))
