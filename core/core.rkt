@@ -13,12 +13,16 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-(define (memorize1 f)
-  (let ([m (make-weak-hash)])
-    (λ (x) (hash-ref m x (λ ()
-                           (let ([v (f x)])
-                             (hash-set! m x v)
-                             v))))))
+(define (memorize1eq f)
+  (let ([m (make-weak-hasheq)])
+    (λ (x) (hash-ref m x
+                     (λ ()
+                       (let ([v (f x)])
+                         (hash-set! m x v)
+                         v))))))
+(define (memroizeeq f)
+  (let ([t (memorize1eq (λ (xs) (apply f xs)))])
+    (λ xs (t xs))))
 (define (with-exception-handler handler thunk)
   (with-handlers ([(λ (x) #t) handler]) (thunk)))
 (module s racket
@@ -27,12 +31,23 @@
     (struct x ... #:transparent)))
 (require 's)
 
+(define (force+ x)
+  (if (promise? x)
+      (force+ (force x))
+      x))
 (define (unlazy x f)
   (if (promise? x)
       (if (promise-forced? x)
           (unlazy (force x) f)
           (delay (unlazy (force x) f)))
       (f x)))
+(define (lmap f xs)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         '()
+         (cons (f (car xs)) (lmap f (cdr xs)))))))
 
 
 ; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
@@ -41,8 +56,8 @@
 (define syntaxerr 'syntax)
 (define (err t f xs) (raise (compile-error t f xs)))
 
-; Symbol -> String -> Any -> String -> TypeError
-(struct type-error (t at x i))
+; Env -> String -> Symbol -> [Any] -> String -> TypeError
+(struct type-error (env at f parm i))
 
 (struct left (x))
 ; Nothing = Left ()
@@ -90,13 +105,46 @@
       (EVAL (env-set (f...-env f) (f...-s f) xs) (f...-exp f))
       ((pri...-f f) xs)))
 
-(define (EVAL env x)
-  (delay
-    (unlazy
-     x
-     (λ (x)
-       (cond
-         [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
-         [(symbol? x) (env-get env x (λ () (err undefined 'eval (list (cons env x)))))]
-         [else x])))))
-(define (APPLY env f xs) 0)
+(define (f-? x) (or (f*? x) (func*? x)))
+(define (apply-f- f env x)
+  (if (func*? f)
+      (apply-func* f (EVAL env x))
+      (apply-f* f env x)))
+(define (f...-? x) (or (func...*? x) (f...*? x)))
+(define (apply-f...- f xs)
+  (if (func...*? f)
+      (apply-func...* f (lmap (λ (x) (EVAL env x)) xs))
+      (apply-f...* f xs)))
+
+(define EVAL
+  (memroizeeq
+   (λ (env x)
+     (delay
+       (unlazy
+        x
+        (λ (x)
+          (cond
+            [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
+            [(symbol? x)
+             (env-get env x
+                                  (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
+            [else x])))))))
+(define (APPLY env f xs)
+  (unlazy
+   f
+   (λ (f)
+     (cond
+       [(f-? f)
+        (unlazy
+         xs
+         (λ (xs)
+           (if (pair? xs)
+               (unlazy
+                (cdr xs)
+                (λ (d)
+                  (if (null? d)
+                      (apply-f- f env (car xs))
+                      (APPLY env (apply-f- f env (car xs)) d))))
+               (raise (type-error env "" 'apply (list f xs) "参数太少")))))]
+       [(f...-? f) (apply-f...- f xs)]
+       [else (raise (type-error env "" 'apply (list f xs) "不是函数"))]))))
