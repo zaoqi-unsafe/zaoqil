@@ -30,6 +30,7 @@
   (define-syntax-rule (structt x ...)
     (struct x ... #:transparent)))
 (require 's)
+(define-syntax-rule (delay-force x) (delay (force x)))
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -93,8 +94,8 @@
 (struct prim... (s f))
 (struct f (env s es exp))
 (struct pri (s f))
-(struct f... (env s exp))
-; Symbol -> ([Env * Exp] -> Any) -> Pri...
+(struct f... (env s es exp))
+; Symbol -> (Env -> [Exp] -> Any) -> Pri...
 (struct pri... (s f))
 
 (define (func*? x) (or (func? x) (prim? x)))
@@ -114,10 +115,11 @@
             (f-exp f))
       ((pri-f f) env x)))
 (define (f...*? x) (or (f...? x) (pri...? x)))
-(define (apply-f...* f xs)
+(define (apply-f...* f env x)
   (if (f...? f)
-      (EVAL (env-set (f...-env f) (f...-s f) xs) (f...-exp f))
-      ((pri...-f f) xs)))
+      (EVAL (env-set (env-set (f...-env f) (f...-s f) x) (f...-es f) env)
+            (f...-exp f))
+      ((pri...-f f) env x)))
 
 (define (f-? x) (or (f*? x) (func*? x)))
 (define (apply-f- f env x)
@@ -125,10 +127,10 @@
       (apply-func* f (EVAL env x))
       (apply-f* f env x)))
 (define (f...-? x) (or (func...*? x) (f...*? x)))
-(define (apply-f...- f xs)
+(define (apply-f...- f env xs)
   (if (func...*? f)
       (apply-func...* f (lmap (λ (x) (EVAL env x)) xs))
-      (apply-f...* f xs)))
+      (apply-f...* f env xs)))
 
 (define EVAL
   (memroizeeq
@@ -160,7 +162,7 @@
                       (apply-f- f env (car xs))
                       (APPLY env (apply-f- f env (car xs)) d))))
                (raise (type-error env "" 'apply (list f xs) "参数太少")))))]
-       [(f...-? f) (apply-f...- f xs)]
+       [(f...-? f) (apply-f...- f env xs)]
        [else (raise (type-error env "" 'apply (list f xs) "不是函数"))]))))
 
 (define (prim1 s f) (prim s (λ (x) (unlazy x f))))
@@ -171,9 +173,9 @@
   (if (zero? n)
       (f '())
       (let ([s (gensym)])
-        (func null-env s (%funcpack (pred n) (λ (xs) (f (cons s xs))))))))
+        (list 'λ s (%funcpack (pred n) (λ (xs) (f (cons s xs))))))))
 (define (funcpack n x)
-  (%funcpack n (λ (xs) (cons x xs))))
+  (delay-force (EVAL genv (%funcpack n (λ (xs) (cons x xs))))))
 (define (prim...+ s f)
   (prim... s (λ (xs) (unlazylist xs f))))
 (define (primn n s f) (funcpack n (prim...+ s (λ (xs) (apply f xs)))))
@@ -184,6 +186,21 @@
    'cons (primn 2 'cons cons)
    'car (prim1 'car car)
    'cdr (prim1 'cdr cdr)
+   'λ (pri... 'λ
+              (λ (env xs)
+                (unlazylist xs
+                            (λ (xs)
+                              (apply (λ (s x)
+                                       (func env s x)) xs)))))
    ))
 
-(define (core x) (with-exception-handler (λ (x) x) (λ () (force+ (EVAL genv x)))))
+(define (to-racket x)
+  (let ([x (force+ x)])
+    (cond
+      [(pair? x) (cons (to-racket (car x)) (to-racket (cdr x)))]
+      [else x])))
+
+(define (core x)
+  (with-exception-handler
+      (λ (x) x)
+    (λ () (to-racket (EVAL genv x)))))
