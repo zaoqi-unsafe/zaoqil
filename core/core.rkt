@@ -31,6 +31,8 @@
     (struct x ... #:transparent)))
 (require 's)
 
+(define (succ x) (+ 1 x))
+(define (pred x) (- x 1))
 (define (force+ x)
   (if (promise? x)
       (force+ (force x))
@@ -48,6 +50,16 @@
      (if (null? xs)
          '()
          (cons (f (car xs)) (lmap f (cdr xs)))))))
+(define (unlazylist xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazylist
+          (cdr xs)
+          (λ (d)
+            (f (cons (car xs) d))))))))
 
 
 ; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
@@ -68,8 +80,10 @@
 (define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
 
 (struct env (at x))
+(define (newenv . xs)
+  (env (at "" 0 '()) (apply hasheq xs)))
 (define (env-set e s x) (env (env-at e) (hash-set (env-x e) s x)))
-(define (env-get e s f) (env (env-at e) (hash-ref (env-x e) s f)))
+(define (env-get e s f) (hash-ref (env-x e) s f))
 (define (env-at+ e x) (env (at+ (env-at e) x) (env-x e)))
 
 (struct func (env s exp))
@@ -127,7 +141,7 @@
             [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
             [(symbol? x)
              (env-get env x
-                                  (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
+                      (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
             [else x])))))))
 (define (APPLY env f xs)
   (unlazy
@@ -148,3 +162,28 @@
                (raise (type-error env "" 'apply (list f xs) "参数太少")))))]
        [(f...-? f) (apply-f...- f xs)]
        [else (raise (type-error env "" 'apply (list f xs) "不是函数"))]))))
+
+(define (prim1 s f) (prim s (λ (x) (unlazy x f))))
+
+(define null-env (newenv))
+
+(define (%funcpack n f)
+  (if (zero? n)
+      (f '())
+      (let ([s (gensym)])
+        (func null-env s (%funcpack (pred n) (λ (xs) (f (cons s xs))))))))
+(define (funcpack n x)
+  (%funcpack n (λ (xs) (cons x xs))))
+(define (prim...+ s f)
+  (prim... s (λ (xs) (unlazylist xs f))))
+(define (primn n s f) (funcpack n (prim...+ s (λ (xs) (apply f xs)))))
+
+(define genv
+  (newenv
+   'pair? (prim 'pair? (λ (x) (unlazy x pair?)))
+   'cons (primn 2 'cons cons)
+   'car (prim1 'car car)
+   'cdr (prim1 'cdr cdr)
+   ))
+
+(define (core x) (with-exception-handler (λ (x) x) (λ () (force+ (EVAL genv x)))))
