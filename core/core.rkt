@@ -36,8 +36,27 @@
 (define prelude
   '(record
     list (λ... xs xs)
+    foldl (λ f (λ x (λ xs
+                     (if (null? xs)
+                         x
+                         (foldl f (f (car xs) x) (cdr xs))))))
+    fold foldl
+    map (λ f (λ xs
+               (if (null? xs)
+                   ()
+                   (cons (f (car xs)) (map f (cdr xs))))))
+    filter (λ f (λ xs
+                  (if (null? xs)
+                      ()
+                      (if (f (car xs))
+                          (cons (car xs) (filter f (cdr xs)))
+                          (filter f (cdr xs))))))
+    cond (λ... xs
+               (if (car xs)
+                   (car (cdr xs))
+                   (apply cond (cdr (cdr xs)))))
+    else true
     ))
-  
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -235,6 +254,7 @@
    prelude
    (newenv
     'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
+    'apply (prim 'apply 2 (λ (f xs) (APPLY genv f (lmap (λ (x) (list 'quote x)) xs))))
     'quote (primf 'quote 1 (λ (env x) x))
 
     'null? (p1 'null? null?)
