@@ -266,6 +266,7 @@
                             k
                             (λ (k)
                               (hash-set rec k (EVAL envx x))))))))
+   'record->list (prim* 'record->list 1 hash->list)
    ))
 
 (define (to-racket x)
