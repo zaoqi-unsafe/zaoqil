@@ -179,6 +179,7 @@
 (define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
 (define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 (define (p1 s f) (prim* s 1 f))
+(define (p2 s f) (prim* s 2 f))
 (define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
 (define (primf... s f) (f... (list '_G_ s) f))
 
@@ -199,6 +200,25 @@
                          (f (cons (cons s (car dd)) d))))))))))))
 (define (env-append env ps)
   (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
+
+(define (andl x y)
+  (if (promise? x)
+      (delay (andl y (force x)))
+      (if x
+          y
+          #f)))
+(define (EQ? x y)
+  (cond
+    [(equal? x y) #t]
+    [(promise? x) (delay (EQ? y (force x)))]
+    [(promise? y) (delay (EQ? x (force y)))]
+    [(pair? x)
+     (and (pair? y)
+          (andl
+           (EQ? (car x) (car y))
+           (EQ? (cdr x) (cdr y))))]
+    [(hash? x) (and (hash? y) (EQ? (hash->list x) (hash->list y)))] ; BUG hash->list 可能顺序不一样
+    [else #f]))
 
 (define genv
   (newenv
@@ -268,7 +288,17 @@
                             k
                             (λ (k)
                               (hash-set rec k (EVAL envx x))))))))
-   'record->list (prim* 'record->list 1 hash->list)
+   'record->list (p1 'record->list hash->list)
+
+   '+ (p2 '+ +)
+   '- (p2 '- -)
+   '* (p2 '* *)
+   '/ (p2 '/ /)
+   '= (prim '= 2 EQ?)
+   '< (p2 '< <)
+   '> (p2 '> >)
+   '=< (p2 '=< <=)
+   '>= (p2 '>= >=)
    ))
 
 (define (to-racket x)

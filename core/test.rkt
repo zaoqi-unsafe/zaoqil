@@ -30,3 +30,4 @@
 (e (: (record b a a 0) b) 0)
 (e (record-has? (record b b) b) #t)
 (e (: (record-set (record b b) b 1) b) 1)
+(e (= (record b 0 a 1) (record a 1 b 0)) #t)
