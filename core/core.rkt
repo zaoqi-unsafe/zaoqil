@@ -192,6 +192,7 @@
    'boolean? (prim* 'boolean? 1 boolean?)
    'true #t
    'false #f
+   'if (prim 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
    ))
 
 (define (to-racket x)

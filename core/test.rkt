@@ -25,3 +25,4 @@
 
 (e ((cons 1) 2) (cons 1 2))
 (e 'cons 'cons)
+(e ((if #t 0) 1) 0)
