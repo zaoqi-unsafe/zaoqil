@@ -131,14 +131,13 @@
 ; Env -> String -> Symbol -> [Any] -> String -> TypeError
 (struct type-error (env at f parm i))
 
-; String → Nat → [U Symbol (Promise Hash)] → At
+; String → Nat → [U Symbol (Promise Hash) Hash] → At
 (struct at (file line ss))
 (define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
 
 (struct env (at x))
-(define (newenv . xs)
-  (letrec ([r (env (at "" 0 (list (delay r))) (apply hasheq xs))])
-    r))
+(define (hash->env h) (env (at "" 0 (list h)) h))
+(define (newenv . xs) (hash->env (apply hasheq xs)))
 (define (env-set e s x) (env (env-at e) (hash-set (env-x e) s x)))
 (define (env-get e s f) (hash-ref (env-x e) s f))
 (define (env-at+ e x) (env (at+ (env-at e) x) (env-x e)))
@@ -356,6 +355,7 @@
                              (λ (k)
                                (hash-set rec k (EVAL envx x))))))))
     'record->list (p1 'record->list hash->list)
+    'record->env (p1 'record->env hash->env)
 
     'number? (p1 'number? number?)
     '+/2 (p2 '+/2 +)
