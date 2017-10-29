@@ -62,16 +62,16 @@
           (cdr xs)
           (λ (d)
             (f (cons x d))))))))
-;(define (unlazylist xs f)
-;  (unlazy
-;   xs
-;   (λ (xs)
-;     (if (null? xs)
-;         (f '())
-;         (unlazylist
-;          (cdr xs)
-;          (λ (d)
-;            (f (cons (car xs) d))))))))
+(define (unlazylist xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazylist
+          (cdr xs)
+          (λ (d)
+            (f (cons (car xs) d))))))))
 ;(define (%unlazyn n xs f)
 ;  (if (zero? n)
 ;      (f '())
@@ -172,16 +172,16 @@
       (t '())
       (f exp
          (λ (env x)
-           (%primf (list '(_G_ chenv) env (list exp x))
+           (%primf (list '(_G_ 'chenv) env (list exp x))
                    (pred n)
                    (λ (xs)
                      (t (cons env (cons x xs)))))))))
-(define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
-(define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
+(define (prim s n f) (%prim (list '_G_ (list 'quote s)) n (λ (xs) (apply f xs))))
+(define (prim* s n f) (%prim (list '_G_ (list 'quote s)) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 (define (p1 s f) (prim* s 1 f))
 (define (p2 s f) (prim* s 2 f))
-(define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
-(define (primf... s f) (f... (list '_G_ s) f))
+(define (primf s n f) (%primf (list '_G_ (list 'quote s)) n (λ (xs) (apply f xs))))
+(define (primf... s f) (f... (list '_G_ (list 'quote s)) f))
 
 (define (mkpair xs f)
   (unlazy
@@ -290,15 +290,25 @@
                               (hash-set rec k (EVAL envx x))))))))
    'record->list (p1 'record->list hash->list)
 
-   '+ (p2 '+ +)
-   '- (p2 '- -)
-   '* (p2 '* *)
-   '/ (p2 '/ /)
-   '= (prim '= 2 EQ?)
-   '< (p2 '< <)
-   '> (p2 '> >)
-   '=< (p2 '=< <=)
-   '>= (p2 '>= >=)
+   '+/2 (p2 '+/2 +)
+   '-/2 (p2 '-/2 -)
+   '*/2 (p2 '*/2 *)
+   '//2 (p2 '//2 /)
+   '=/2 (prim '=/2 2 EQ?)
+   '</2 (p2 '</2 <)
+   '>/2 (p2 '>/2 >)
+   '=</2 (p2 '=</2 <=)
+   '>=/2 (p2 '>=/2 >=)
+
+   'λ (primf 'λ 2
+             (λ (envs s envx x)
+               (unlazy
+                s
+                (λ (s)
+                  (func (list '(_G_ 'chenv) envx (list '_G_ (list 'λ s x)))
+                        (λ (v)
+                          (EVAL (env-set envx s v)
+                                x)))))))
    ))
 
 (define (to-racket x)
