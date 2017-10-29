@@ -56,27 +56,29 @@
                    (car (cdr xs))
                    (apply cond (cdr (cdr xs)))))
     else true
-    λ2 (λmacro x (λmacro y (λmacro v
+    λ2 (macro x (macro y (macro v
                                    (list 'λ x
                                          (list 'λ y
                                                (list 'choice2 x y
                                                      (list 'λ x
                                                            (list 'λ y
                                                                  v))))))))
-    λmacro (f envs s (f envv v
+    macro (f envs s (f envv v
                         (gensym
                          (λ es
                            (eval+env
                             envv
                             (list 'f es s
                                   (list 'eval+env es v)))))))
-    λmacro... (f envs s (f envv v
+    macro... (f envs s (f envv v
                            (gensym
                             (λ es
                               (eval+env
                                envv
                                (list 'f... es s
                                      (list 'eval+env es v)))))))
+    macro? f?
+    macro...? f...?
     ))
 
 (define (succ x) (+ 1 x))

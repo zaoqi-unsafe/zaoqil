@@ -40,5 +40,5 @@
 (e (choice2 (: (record a a) a) 0 (λ x (λ y x))) 0)
 (e ((f env x x) a) 'a)
 (e ((λ2 x y x) (: (record x x) x) 0) 0)
-(e (: (record v 0 r ((λmacro x x) v)) r) 0)
-(e ((λmacro... xs (cons 'list xs)) 0 1 2) '(0 1 2))
+(e (: (record v 0 r ((macro x x) v)) r) 0)
+(e ((macro... xs (cons 'list xs)) 0 1 2) '(0 1 2))
