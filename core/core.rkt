@@ -239,6 +239,11 @@
                            (EVAL envr r)
                            (λ (rec)
                              (EVAL (env-append envx (hash->list rec)) x)))))
+   ': (primf ': 2 (λ (envr r envx x)
+                    (unlazy
+                     (EVAL envr r)
+                     (λ (rec)
+                       (hash-ref rec x (λ () (raise (compile-error undefined ': (list (cons envr r) (cons envx x))))))))))
    ))
 
 (define (to-racket x)

@@ -27,3 +27,4 @@
 (e 'cons 'cons)
 (e ((if #t 0) 1) 0)
 (e (open (record a 0 c (cons a b) b 1) (car c)) 0)
+(e (: (record b a a 0) b) 0)
