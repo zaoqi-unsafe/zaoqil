@@ -32,3 +32,4 @@
 (e (: (record-set (record b b) b 1) b) 1)
 (e (=/2 (record b 0 a 1) (record a 1 b 0)) #t)
 (e ((λ x x) (cons 'a 'b)) (cons 'a 'b))
+(e (((λ... xs) xs) 0 1 2 3) (list 0 1 2 3))

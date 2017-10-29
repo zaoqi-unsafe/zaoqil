@@ -305,7 +305,16 @@
                (unlazy
                 s
                 (λ (s)
-                  (func (list '(_G_ 'chenv) envx (list '_G_ (list 'λ s x)))
+                  (func (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ s x))))
+                        (λ (v)
+                          (EVAL (env-set envx s v)
+                                x)))))))
+   'λ... (primf 'λ... 2
+             (λ (envs s envx x)
+               (unlazy
+                s
+                (λ (s)
+                  (func... (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ... s x))))
                         (λ (v)
                           (EVAL (env-set envx s v)
                                 x)))))))
