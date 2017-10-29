@@ -23,6 +23,7 @@
 (define (memroizeeq f)
   (let ([t (memorize1eq (λ (xs) (apply f xs)))])
     (λ xs (t xs))))
+(define-syntax-rule (delay-force x) (delay (force x)))
 (define (with-exception-handler handler thunk)
   (with-handlers ([(λ (x) #t) handler]) (thunk)))
 (module s racket
@@ -30,7 +31,6 @@
   (define-syntax-rule (structt x ...)
     (struct x ... #:transparent)))
 (require 's)
-(define-syntax-rule (delay-force x) (delay (force x)))
 
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
@@ -51,17 +51,39 @@
      (if (null? xs)
          '()
          (cons (f (car xs)) (lmap f (cdr xs)))))))
-(define (unlazylist xs f)
-  (unlazy
-   xs
-   (λ (xs)
-     (if (null? xs)
-         (f '())
-         (unlazylist
+(define (unlazy* xs f)
+  (if (null? xs)
+      (f '())
+      (unlazy
+       (car xs)
+       (λ (x)
+         (unlazy*
           (cdr xs)
           (λ (d)
-            (f (cons (car xs) d))))))))
-
+            (f (cons x d))))))))
+;(define (unlazylist xs f)
+;  (unlazy
+;   xs
+;   (λ (xs)
+;     (if (null? xs)
+;         (f '())
+;         (unlazylist
+;          (cdr xs)
+;          (λ (d)
+;            (f (cons (car xs) d))))))))
+;(define (%unlazyn n xs f)
+;  (if (zero? n)
+;      (f '())
+;      (unlazy
+;       xs
+;       (λ (xs)
+;         (%unlazyn
+;          (pred n)
+;          (cdr xs)
+;          (λ (d)
+;            (f (cons (car xs) d))))))))
+;(define (unlazyn* n xs f) (%unlazyn n xs (λ (xs) (λ (xs) (apply f xs)))))
+;(define (unlazyn* n xs f) (%unlazyn n xs (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 
 ; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
 (struct compile-error (t f xs))
@@ -87,70 +109,41 @@
 (define (env-get e s f) (hash-ref (env-x e) s f))
 (define (env-at+ e x) (env (at+ (env-at e) x) (env-x e)))
 
-(struct func (env s exp))
-; Symbol -> (Any -> Any) -> Prim
-(struct prim (s f))
-(struct func... (env s exp))
-(struct prim... (s f))
-(struct f (env s es exp))
-(struct pri (s f))
-(struct f... (env s es exp))
-; Symbol -> (Env -> [Exp] -> Any) -> Pri...
-(struct pri... (s f))
+(struct func (exp f))
+(struct func... (exp f))
+(struct f (exp f))
+(struct f... (exp f))
 
-(define (func*? x) (or (func? x) (prim? x)))
-(define (apply-func* f x)
+(define (lam? x) (or (func? x) (f? x)))
+(define (lam...? x) (or (func...? x) (f...? x)))
+(define (apply-lam env f x)
   (if (func? f)
-      (EVAL (env-set (func-env f) (func-s f) x) (func-exp f))
-      ((prim-f f) x)))
-(define (func...*? x) (or (func...? x) (prim...? x)))
-(define (apply-func...* f xs)
+      ((func-f f) (EVAL env x))
+      ((f-f f) env x)))
+(define (apply-lam... env f xs)
   (if (func...? f)
-      (EVAL (env-set (func...-env f) (func...-s f) xs) (func...-exp f))
-      ((prim...-f f) xs)))
-(define (f*? x) (or (f? x) (pri? x)))
-(define (apply-f* f env x)
-  (if (f? f)
-      (EVAL (env-set (env-set (f-env f) (f-s f) x) (f-es f) env)
-            (f-exp f))
-      ((pri-f f) env x)))
-(define (f...*? x) (or (f...? x) (pri...? x)))
-(define (apply-f...* f env x)
-  (if (f...? f)
-      (EVAL (env-set (env-set (f...-env f) (f...-s f) x) (f...-es f) env)
-            (f...-exp f))
-      ((pri...-f f) env x)))
+      ((func...-f f) (lmap (λ (v) (EVAL env v)) xs))
+      ((f...-f f) env xs)))
 
-(define (f-? x) (or (f*? x) (func*? x)))
-(define (apply-f- f env x)
-  (if (func*? f)
-      (apply-func* f (EVAL env x))
-      (apply-f* f env x)))
-(define (f...-? x) (or (func...*? x) (f...*? x)))
-(define (apply-f...- f env xs)
-  (if (func...*? f)
-      (apply-func...* f (lmap (λ (x) (EVAL env x)) xs))
-      (apply-f...* f env xs)))
+(define (EVAL env x)
+  (delay
+    (unlazy
+     x
+     (λ (x)
+       (cond
+         [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
+         [(symbol? x)
+          (env-get env x
+                   (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
+         [(string? x) (string->list x)]
+         [else x])))))
 
-(define EVAL
-  (memroizeeq
-   (λ (env x)
-     (delay
-       (unlazy
-        x
-        (λ (x)
-          (cond
-            [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
-            [(symbol? x)
-             (env-get env x
-                      (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
-            [else x])))))))
 (define (APPLY env f xs)
   (unlazy
    f
    (λ (f)
      (cond
-       [(f-? f)
+       [(lam? f)
         (unlazy
          xs
          (λ (xs)
@@ -159,39 +152,30 @@
                 (cdr xs)
                 (λ (d)
                   (if (null? d)
-                      (apply-f- f env (car xs))
-                      (APPLY env (apply-f- f env (car xs)) d))))
+                      (apply-lam env f (car xs))
+                      (APPLY env (apply-lam env f (car xs)) d))))
                (raise (type-error env "" 'apply (list f xs) "参数太少")))))]
-       [(f...-? f) (apply-f...- f env xs)]
+       [(lam...? f) (apply-lam... env f xs)]
        [else (raise (type-error env "" 'apply (list f xs) "不是函数"))]))))
 
-(define (prim1 s f) (prim s (λ (x) (unlazy x f))))
-
-(define null-env (newenv))
-
-(define (%funcpack n f)
+(define (%prim exp n f)
   (if (zero? n)
       (f '())
-      (let ([s (gensym)])
-        (list 'λ s (%funcpack (pred n) (λ (xs) (f (cons s xs))))))))
-(define (funcpack n x)
-  (delay-force (EVAL genv (%funcpack n (λ (xs) (cons x xs))))))
-(define (prim...+ s f)
-  (prim... s (λ (xs) (unlazylist xs f))))
-(define (primn n s f) (funcpack n (prim...+ s (λ (xs) (apply f xs)))))
+      (func exp
+            (λ (x)
+              (%prim (list exp (list 'quote x))
+                     (pred n)
+                     (λ (xs)
+                       (f (cons x xs))))))))
+(define (prim s n f) (%prim s n (λ (xs) (apply f xs))))
+(define (prim* s n f) (%prim s n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 
 (define genv
   (newenv
-   'pair? (prim 'pair? (λ (x) (unlazy x pair?)))
-   'cons (primn 2 'cons cons)
-   'car (prim1 'car car)
-   'cdr (prim1 'cdr cdr)
-   'λ (pri... 'λ
-              (λ (env xs)
-                (unlazylist xs
-                            (λ (xs)
-                              (apply (λ (s x)
-                                       (func env s x)) xs)))))
+   'pair? (prim* 'pair? 1 pair?)
+   'cons (prim 'cons 2 cons)
+   'car (prim* 'car 1 car)
+   'cdr (prim* 'cdr 1 cdr)
    ))
 
 (define (to-racket x)
