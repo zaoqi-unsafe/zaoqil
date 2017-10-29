@@ -70,6 +70,13 @@
                             envv
                             (list 'f es s
                                   (list 'eval+env es v)))))))
+    λmacro... (f envs s (f envv v
+                           (gensym
+                            (λ es
+                              (eval+env
+                               envv
+                               (list 'f... es s
+                                     (list 'eval+env es v)))))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -347,6 +354,7 @@
                                (hash-set rec k (EVAL envx x))))))))
     'record->list (p1 'record->list hash->list)
 
+    'number? (p1 'number? number?)
     '+/2 (p2 '+/2 +)
     '-/2 (p2 '-/2 -)
     '*/2 (p2 '*/2 *)
@@ -357,6 +365,10 @@
     '=</2 (p2 '=</2 <=)
     '>=/2 (p2 '>=/2 >=)
 
+    'λ? (p1 'λ? func?)
+    'λ...? (p1 'λ...? func...?)
+    'f? (p1 'f? f?)
+    'f...? (p1 'f...? f...?)
     'λ (primf 'λ 2
               (λ (envs s envx x)
                 (unlazy
@@ -385,6 +397,18 @@
                          (λ (env v)
                            (EVAL (env-set (env-set envx s v) es env)
                                  x)))))))))
+    'f... (primf 'f... 3
+                 (λ (enves es envs s envx x)
+                   (unlazy
+                    es
+                    (λ (es)
+                      (unlazy
+                       s
+                       (λ (s)
+                         (f... (list '(_G_ chenv) envx (list '(_G_ f...) es s x))
+                               (λ (env v)
+                                 (EVAL (env-set (env-set envx s v) es env)
+                                       x)))))))))
     )))
 
 (define (to-racket x)

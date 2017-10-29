@@ -41,3 +41,4 @@
 (e ((f env x x) a) 'a)
 (e ((λ2 x y x) (: (record x x) x) 0) 0)
 (e (: (record v 0 r ((λmacro x x) v)) r) 0)
+(e ((λmacro... xs (cons 'list xs)) 0 1 2) '(0 1 2))
