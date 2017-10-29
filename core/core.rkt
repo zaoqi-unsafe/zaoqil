@@ -56,6 +56,22 @@
                    (car (cdr xs))
                    (apply cond (cdr (cdr xs)))))
     else true
+    λ2 (f envx x (f envy y (f envv v
+                              (eval+env
+                               envv
+                               (list 'λ x
+                                     (list 'λ y
+                                           (list 'choice x y
+                                                 (list 'λ x
+                                                       (list 'λ y
+                                                             v)))))))))
+    λmacro (f envs s (f envv v
+                        (gensym
+                         (λ es
+                           (eval+env
+                            envv
+                            (list 'f es s
+                                  (list 'eval+env es v)))))))
     ))
 
 (define (succ x) (+ 1 x))
@@ -263,9 +279,11 @@
    (newenv
     '_G_ (primf '_G_ 1 (λ (env x) (EVAL genv x)))
     'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
+    'eval+env (prim* 'eval+env 2 EVAL)
     'apply (prim 'apply 2 capply)
     'quote (primf 'quote 1 (λ (env x) x))
     'choice2 (prim 'choice2 3 (λ (x y f) (choice2 x y (λ (x y) (capply f (list x y))))))
+    'gensym (prim 'gensym 1 (memorize1eq (λ (f) (capply f (list (gensym)))))) ; memorize1eq 使其更接近纯函数
 
     'null? (p1 'null? null?)
     'pair? (p1 'pair? pair?)

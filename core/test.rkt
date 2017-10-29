@@ -30,7 +30,7 @@
 (e (: (record b a a 0) b) 0)
 (e (record-has? (record b b) b) #t)
 (e (: (record-set (record b b) b 1) b) 1)
-(e (=/2 (record b 0 a 1) (record a 1 b 0)) #t)
+(e (= (record b 0 a 1) (record a 1 b 0)) #t)
 (e ((λ x x) (cons 'a 'b)) (cons 'a 'b))
 (e (((λ... xs) xs) 0 1 2 3) (list 0 1 2 3))
 (e (cond
@@ -39,3 +39,4 @@
      else 1) 1)
 (e (choice2 (: (record a a) a) 0 (λ x (λ y x))) 0)
 (e ((f env x x) a) 'a)
+(e (: (record v 0 r ((λmacro x x) v)) r) 0)
