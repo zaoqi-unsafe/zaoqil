@@ -13,6 +13,7 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+(provide core)
 (define (memorize1eq f)
   (let ([m (make-weak-hasheq)])
     (λ (x) (hash-ref m x
@@ -94,10 +95,6 @@
 ; Env -> String -> Symbol -> [Any] -> String -> TypeError
 (struct type-error (env at f parm i))
 
-(struct left (x))
-; Nothing = Left ()
-; False = Nothing
-
 ; String → Nat → [U Symbol (Promise Record)] → At
 (struct at (file line ss))
 (define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
@@ -133,8 +130,10 @@
        (cond
          [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
          [(symbol? x)
-          (env-get env x
-                   (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
+          (if (eq? x '_G_)
+              (env-get genv 'eval (λ () (error "eval")))
+              (env-get env x
+                       (λ () (raise (compile-error undefined 'eval (list (cons env x)))))))]
          [(string? x) (string->list x)]
          [else x])))))
 
@@ -167,15 +166,32 @@
                      (pred n)
                      (λ (xs)
                        (f (cons x xs))))))))
-(define (prim s n f) (%prim s n (λ (xs) (apply f xs))))
-(define (prim* s n f) (%prim s n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
+(define (%primf exp n t)
+  (if (zero? n)
+      (t '())
+      (f exp
+         (λ (env x)
+           (%primf (list '(_G_ chenv) env (list exp x))
+                   (pred n)
+                   (λ (xs)
+                     (t (cons env (cons x xs)))))))))
+(define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
+(define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
+(define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
 
 (define genv
   (newenv
+   'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
+   'quote (primf 'quote 1 (λ (env x) x))
+
    'pair? (prim* 'pair? 1 pair?)
    'cons (prim 'cons 2 cons)
    'car (prim* 'car 1 car)
    'cdr (prim* 'cdr 1 cdr)
+
+   'boolean? (prim* 'boolean? 1 boolean?)
+   'true #t
+   'false #f
    ))
 
 (define (to-racket x)
