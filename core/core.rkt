@@ -178,6 +178,7 @@
                      (t (cons env (cons x xs)))))))))
 (define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
 (define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
+(define (p1 s f) (prim* s 1 f))
 (define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
 (define (primf... s f) (f... (list '_G_ s) f))
 
@@ -204,17 +205,18 @@
    'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
    'quote (primf 'quote 1 (λ (env x) x))
 
-   'pair? (prim* 'pair? 1 pair?)
+   'null? (p1 'null? null?)
+   'pair? (p1 'pair? pair?)
    'cons (prim 'cons 2 cons)
-   'car (prim* 'car 1 car)
-   'cdr (prim* 'cdr 1 cdr)
+   'car (p1 'car car)
+   'cdr (p1 'cdr cdr)
 
-   'boolean? (prim* 'boolean? 1 boolean?)
+   'boolean? (p1 'boolean? boolean?)
    'true #t
    'false #f
    'if (prim 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
 
-   'record? (prim* 'record? 1 hash?)
+   'record? (p1 'record? hash?)
    'record
    (primf...
     'record
