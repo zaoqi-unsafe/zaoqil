@@ -33,6 +33,12 @@
     (struct x ... #:transparent)))
 (require 's)
 
+(define prelude
+  '(record
+    list (λ... xs xs)
+    ))
+  
+
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
 (define (force+ x)
@@ -200,6 +206,7 @@
                          (f (cons (cons s (car dd)) d))))))))))))
 (define (env-append env ps)
   (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
+(define (env+record env rec) (env-append env (hash->list rec)))
 
 (define (andl x y)
   (if (promise? x)
@@ -220,105 +227,109 @@
     [(hash? x) (and (hash? y) (EQ? (hash->list x) (hash->list y)))] ; BUG hash->list 可能顺序不一样
     [else #f]))
 
+(define (LOAD x env)
+  (env+record env (force+ (EVAL env x))))
+
 (define genv
-  (newenv
-   'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
-   'quote (primf 'quote 1 (λ (env x) x))
+  (LOAD
+   prelude
+   (newenv
+    'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
+    'quote (primf 'quote 1 (λ (env x) x))
 
-   'null? (p1 'null? null?)
-   'pair? (p1 'pair? pair?)
-   'cons (prim 'cons 2 cons)
-   'car (p1 'car car)
-   'cdr (p1 'cdr cdr)
+    'null? (p1 'null? null?)
+    'pair? (p1 'pair? pair?)
+    'cons (prim 'cons 2 cons)
+    'car (p1 'car car)
+    'cdr (p1 'cdr cdr)
 
-   'boolean? (p1 'boolean? boolean?)
-   'true #t
-   'false #f
-   'if (prim 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
+    'boolean? (p1 'boolean? boolean?)
+    'true #t
+    'false #f
+    'if (prim 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
 
-   'record? (p1 'record? hash?)
-   'record
-   (primf...
-    'record
-    (λ (env xs)
-      (letrec
-          ([rc
-            (delay
-              (mkpair
-               xs
-               (λ (ps)
-                 (map (λ (p)
-                        (let ([s (car p)])
-                          (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
-                      ps))))]
-           [newenv
-            (delay
-              (env-at+ (env-set (env-append env (force+ rc)) '_< rec) newenv))]
-           [rec (unlazy rc make-immutable-hasheq)])
-        rec)))
-   'open (primf 'open 2 (λ (envr r envx x)
+    'record? (p1 'record? hash?)
+    'record (primf...
+             'record
+             (λ (env xs)
+               (letrec
+                   ([rc
+                     (delay
+                       (mkpair
+                        xs
+                        (λ (ps)
+                          (map (λ (p)
+                                 (let ([s (car p)])
+                                   (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
+                               ps))))]
+                    [newenv
+                     (delay
+                       (env-at+ (env-set (env-append env (force+ rc)) '_< rec) newenv))]
+                    [rec (unlazy rc make-immutable-hasheq)])
+                 rec)))
+    'open (primf 'open 2 (λ (envr r envx x)
+                           (unlazy
+                            (EVAL envr r)
+                            (λ (rec)
+                              (EVAL (env+record envx rec) x)))))
+    ': (primf ': 2
+              (λ (envr r envx x)
+                (unlazy
+                 (EVAL envr r)
+                 (λ (rec)
+                   (unlazy
+                    x
+                    (λ (x)
+                      (hash-ref rec x (λ () (raise (compile-error undefined ': (list (cons envr r) (cons envx x))))))))))))
+    'record-has? (primf 'record-has? 2
+                        (λ (envr r envx x)
                           (unlazy
                            (EVAL envr r)
                            (λ (rec)
-                             (EVAL (env-append envx (hash->list rec)) x)))))
-   ': (primf ': 2
-             (λ (envr r envx x)
-               (unlazy
-                (EVAL envr r)
-                (λ (rec)
-                  (unlazy
-                   x
-                   (λ (x)
-                     (hash-ref rec x (λ () (raise (compile-error undefined ': (list (cons envr r) (cons envx x))))))))))))
-   'record-has? (primf 'record-has? 2
-                       (λ (envr r envx x)
+                             (unlazy
+                              x
+                              (λ (x)
+                                (hash-has-key? rec x)))))))
+    'record-set (primf 'record-set 3
+                       (λ (envr r envk k envx x)
                          (unlazy
                           (EVAL envr r)
                           (λ (rec)
                             (unlazy
-                             x
-                             (λ (x)
-                               (hash-has-key? rec x)))))))
-   'record-set (primf 'record-set 3
-                      (λ (envr r envk k envx x)
-                        (unlazy
-                         (EVAL envr r)
-                         (λ (rec)
-                           (unlazy
-                            k
-                            (λ (k)
-                              (hash-set rec k (EVAL envx x))))))))
-   'record->list (p1 'record->list hash->list)
+                             k
+                             (λ (k)
+                               (hash-set rec k (EVAL envx x))))))))
+    'record->list (p1 'record->list hash->list)
 
-   '+/2 (p2 '+/2 +)
-   '-/2 (p2 '-/2 -)
-   '*/2 (p2 '*/2 *)
-   '//2 (p2 '//2 /)
-   '=/2 (prim '=/2 2 EQ?)
-   '</2 (p2 '</2 <)
-   '>/2 (p2 '>/2 >)
-   '=</2 (p2 '=</2 <=)
-   '>=/2 (p2 '>=/2 >=)
+    '+/2 (p2 '+/2 +)
+    '-/2 (p2 '-/2 -)
+    '*/2 (p2 '*/2 *)
+    '//2 (p2 '//2 /)
+    '=/2 (prim '=/2 2 EQ?)
+    '</2 (p2 '</2 <)
+    '>/2 (p2 '>/2 >)
+    '=</2 (p2 '=</2 <=)
+    '>=/2 (p2 '>=/2 >=)
 
-   'λ (primf 'λ 2
-             (λ (envs s envx x)
-               (unlazy
-                s
-                (λ (s)
-                  (func (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ s x))))
-                        (λ (v)
-                          (EVAL (env-set envx s v)
-                                x)))))))
-   'λ... (primf 'λ... 2
-             (λ (envs s envx x)
-               (unlazy
-                s
-                (λ (s)
-                  (func... (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ... s x))))
-                        (λ (v)
-                          (EVAL (env-set envx s v)
-                                x)))))))
-   ))
+    'λ (primf 'λ 2
+              (λ (envs s envx x)
+                (unlazy
+                 s
+                 (λ (s)
+                   (func (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ s x))))
+                         (λ (v)
+                           (EVAL (env-set envx s v)
+                                 x)))))))
+    'λ... (primf 'λ... 2
+                 (λ (envs s envx x)
+                   (unlazy
+                    s
+                    (λ (s)
+                      (func... (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ... s x))))
+                               (λ (v)
+                                 (EVAL (env-set envx s v)
+                                       x)))))))
+    )))
 
 (define (to-racket x)
   (let ([x (force+ x)])
