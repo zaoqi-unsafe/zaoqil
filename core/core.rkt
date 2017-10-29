@@ -378,6 +378,7 @@
     (λ () (to-racket (EVAL genv x)))))
 
 ; ----------------------------------------------------------------------------------------------------------------------------
+; 暂时未使用
 
 (struct reads (x r))
 (define (readst s) (readc (string->list s)))
@@ -464,3 +465,51 @@
          (if n
              (reads (cons (car xs) (reads-x n)) (reads-r n))
              (reads (list (car xs)) (cdr xs))))))
+
+
+(struct ioret (v))
+(struct iocall/ccv (id x))
+(struct iocall/cc (id x))
+(struct iobind (x f))
+(struct ioputstr (x))
+(struct ionewline ())
+(struct ioread-line ())
+(define (io? x) (or (ioret? x) (iocall/ccv? x) (iocall/cc? x) (iobind? x) (ioputstr? x) (ionewline? x) (ioread-line? x)))
+(define id!
+  (let ([idc 0])
+    (λ ()
+      (set! idc (succ idc))
+      idc)))
+(define (runio x f)
+  (unlazy
+   x
+   (λ (x)
+     (cond
+       [(ioret? x) (f (ioret-v x))]
+       [(iobind? x)
+        (runio (iobind-x x) (λ (r) (unlazy
+                                    (iobind-f x)
+                                    (λ (x)
+                                      (runio (capply x (list r)) f)))))]
+       [(ioputstr? x) (unlazy* (ioputstr-x x) (λ (s) (display (list->string s)) (f '())))]
+       [(ionewline? x) (newline) (f '())]
+       [(iocall/ccv? x) x]
+       [(iocall/cc? x) (runio (iocall/cc-x x)
+                              (λ (r)
+                                (if (and (iocall/ccv? r) (equal? (iocall/ccv-id r) (iocall/cc-id x)))
+                                    (f (iocall/ccv-x r))
+                                    (f r))))]
+       [(ioread-line? x) (f (read-line))]
+       [else (err syntaxerr 'runio (list x f) '())]))))
+; old
+;(define io
+;  (record (hasheq 'return (pf 1 ioret)
+;                  '>>= (pf 2 iobind)
+;                  'putstr (pf 1 ioputstr)
+;                  'newline (ionewline)
+;                  'readline (ioread-line)
+;                  'call/cc (pf
+;                            1
+;                            (λ (f)
+;                              (let ([id (id!)])
+;                                (iocall/cc id (capply f (list (pf 1 (λ (x) (iocall/ccv id x))))))))))))
