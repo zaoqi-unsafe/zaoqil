@@ -79,6 +79,7 @@
                                      (list 'eval+env es v)))))))
     macro? f?
     macro...? f...?
+    chenv (λ env (f envx x (eval+env env x)))
     ))
 
 (define (succ x) (+ 1 x))
