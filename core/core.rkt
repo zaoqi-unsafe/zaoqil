@@ -37,9 +37,9 @@
   '(record
     list (λ... xs xs)
     foldl (λ f (λ x (λ xs
-                     (if (null? xs)
-                         x
-                         (foldl f (f (car xs) x) (cdr xs))))))
+                      (if (null? xs)
+                          x
+                          (foldl f (f (car xs) x) (cdr xs))))))
     fold foldl
     map (λ f (λ xs
                (if (null? xs)
@@ -97,19 +97,6 @@
           (cdr xs)
           (λ (d)
             (f (cons (car xs) d))))))))
-;(define (%unlazyn n xs f)
-;  (if (zero? n)
-;      (f '())
-;      (unlazy
-;       xs
-;       (λ (xs)
-;         (%unlazyn
-;          (pred n)
-;          (cdr xs)
-;          (λ (d)
-;            (f (cons (car xs) d))))))))
-;(define (unlazyn* n xs f) (%unlazyn n xs (λ (xs) (λ (xs) (apply f xs)))))
-;(define (unlazyn* n xs f) (%unlazyn n xs (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 
 ; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
 (struct compile-error (t f xs))
@@ -182,6 +169,7 @@
                (raise (type-error env "" 'apply (list f xs) "参数太少")))))]
        [(lam...? f) (apply-lam... env f xs)]
        [else (raise (type-error env "" 'apply (list f xs) "不是函数"))]))))
+(define (capply f xs) (APPLY genv f (lmap (λ (x) (list 'quote x)) xs)))
 
 (define (%prim exp n f)
   (if (zero? n)
@@ -249,13 +237,34 @@
 (define (LOAD x env)
   (env+record env (force+ (EVAL env x))))
 
+(define (choice2 x y f)
+  (if (promise? x)
+      (delay (choice2 y (force x) f))
+      (f x y)))
+;wip
+;(define (%choice* ps xs rs)
+;  (if (pair? ps)
+;      (%choice* (cdr ps) (cons (car ps) xs) rs)
+;      (if (null? ps)
+;          (%choice*- xs rs)
+;          (if (null? xs)
+;              (if (null? rs)
+;                  (unlazy ps (λ (ps) (%choice* ps '() '())))
+;                  (%choice* ps rs '()))
+;              (if (promise? (car xs))
+;                  (delay
+;                    (delay
+;                      (%choice* (force ps) (cdr xs) (cons (force (car xs)) rs))))
+;                  (cons (car xs) (%choice* ps (cdr xs) rs)))))))
+
 (define genv
   (LOAD
    prelude
    (newenv
     'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
-    'apply (prim 'apply 2 (λ (f xs) (APPLY genv f (lmap (λ (x) (list 'quote x)) xs))))
+    'apply (prim 'apply 2 capply)
     'quote (primf 'quote 1 (λ (env x) x))
+    'choice2 (prim 'choice2 3 (λ (x y f) (choice2 x y (λ (x y) (capply f (list x y))))))
 
     'null? (p1 'null? null?)
     'pair? (p1 'pair? pair?)

@@ -37,3 +37,4 @@
      false 0
      false 2
      else 1) 1)
+(e (choice2 (: (record a a) a) 0 (λ x (λ y x))) 0)
