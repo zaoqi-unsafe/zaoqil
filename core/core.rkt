@@ -95,13 +95,14 @@
 ; Env -> String -> Symbol -> [Any] -> String -> TypeError
 (struct type-error (env at f parm i))
 
-; String → Nat → [U Symbol (Promise Record)] → At
+; String → Nat → [U Symbol (Promise Hash)] → At
 (struct at (file line ss))
 (define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
 
 (struct env (at x))
 (define (newenv . xs)
-  (env (at "" 0 '()) (apply hasheq xs)))
+  (letrec ([r (env (at "" 0 (list (delay r))) (apply hasheq xs))])
+    r))
 (define (env-set e s x) (env (env-at e) (hash-set (env-x e) s x)))
 (define (env-get e s f) (hash-ref (env-x e) s f))
 (define (env-at+ e x) (env (at+ (env-at e) x) (env-x e)))
@@ -178,6 +179,25 @@
 (define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
 (define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 (define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
+(define (primf... s f) (f... (list '_G_ s) f))
+
+(define (mkpair xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazy
+          (car xs)
+          (λ (s)
+            (unlazy
+             (cdr xs)
+             (λ (dd)
+               (mkpair (cdr dd)
+                       (λ (d)
+                         (f (cons (cons s (car dd)) d))))))))))))
+(define (env-append env ps)
+  (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
 
 (define genv
   (newenv
@@ -193,12 +213,39 @@
    'true #t
    'false #f
    'if (prim 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
+
+   'record? (prim* 'record? 1 hash?)
+   'record
+   (primf...
+    'record
+    (λ (env xs)
+      (letrec
+          ([rc
+            (delay
+              (mkpair
+               xs
+               (λ (ps)
+                 (map (λ (p)
+                        (let ([s (car p)])
+                          (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
+                      ps))))]
+           [newenv
+            (delay
+              (env-at+ (env-set (env-append env (force+ rc)) '_< rec) newenv))]
+           [rec (unlazy rc make-immutable-hasheq)])
+        rec)))
    ))
 
 (define (to-racket x)
   (let ([x (force+ x)])
     (cond
       [(pair? x) (cons (to-racket (car x)) (to-racket (cdr x)))]
+      [(hash? x)
+       (make-immutable-hasheq
+        (map
+         (λ (p)
+           (cons (car p) (to-racket (cdr p))))
+         (hash->list x)))]
       [else x])))
 
 (define (core x)
