@@ -56,15 +56,13 @@
                    (car (cdr xs))
                    (apply cond (cdr (cdr xs)))))
     else true
-    λ2 (f envx x (f envy y (f envv v
-                              (eval+env
-                               envv
-                               (list 'λ x
-                                     (list 'λ y
-                                           (list 'choice2 x y
-                                                 (list 'λ x
-                                                       (list 'λ y
-                                                             v)))))))))
+    λ2 (λmacro x (λmacro y (λmacro v
+                                   (list 'λ x
+                                         (list 'λ y
+                                               (list 'choice2 x y
+                                                     (list 'λ x
+                                                           (list 'λ y
+                                                                 v))))))))
     λmacro (f envs s (f envv v
                         (gensym
                          (λ es
