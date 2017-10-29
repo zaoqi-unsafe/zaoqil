@@ -42,3 +42,4 @@
 (e ((λ2 x y x) (: (record x x) x) 0) 0)
 (e (: (record v 0 r ((macro x x) v)) r) 0)
 (e ((macro... xs (cons 'list xs)) 0 1 2) '(0 1 2))
+(e (chenv (record->env (record x 0)) x) 0)
