@@ -144,7 +144,7 @@
          [(pair? x) (APPLY env (EVAL env (car x)) (cdr x))]
          [(symbol? x)
           (if (eq? x '_G_)
-              (env-get genv 'eval (λ () (error "eval")))
+              (env-get genv '_G_ (λ () (error "eval")))
               (env-get env x
                        (λ () (raise (compile-error undefined 'eval (list (cons env x)))))))]
          [(string? x) (string->list x)]
@@ -185,16 +185,16 @@
       (t '())
       (f exp
          (λ (env x)
-           (%primf (list '(_G_ 'chenv) env (list exp x))
+           (%primf (list '(_G_ chenv) env (list exp x))
                    (pred n)
                    (λ (xs)
                      (t (cons env (cons x xs)))))))))
-(define (prim s n f) (%prim (list '_G_ (list 'quote s)) n (λ (xs) (apply f xs))))
-(define (prim* s n f) (%prim (list '_G_ (list 'quote s)) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
+(define (prim s n f) (%prim (list '_G_ s) n (λ (xs) (apply f xs))))
+(define (prim* s n f) (%prim (list '_G_ s) n (λ (xs) (unlazy* xs (λ (xs) (apply f xs))))))
 (define (p1 s f) (prim* s 1 f))
 (define (p2 s f) (prim* s 2 f))
-(define (primf s n f) (%primf (list '_G_ (list 'quote s)) n (λ (xs) (apply f xs))))
-(define (primf... s f) (f... (list '_G_ (list 'quote s)) f))
+(define (primf s n f) (%primf (list '_G_ s) n (λ (xs) (apply f xs))))
+(define (primf... s f) (f... (list '_G_ s) f))
 
 (define (mkpair xs f)
   (unlazy
@@ -261,6 +261,7 @@
   (LOAD
    prelude
    (newenv
+    '_G_ (primf '_G_ 1 (λ (env x) (EVAL genv x)))
     'eval (prim 'eval 1 (λ (x) (EVAL genv x)))
     'apply (prim 'apply 2 capply)
     'quote (primf 'quote 1 (λ (env x) x))
@@ -345,19 +346,29 @@
                 (unlazy
                  s
                  (λ (s)
-                   (func (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ s x))))
+                   (func (list '(_G_ chenv) envx (list '(_G_ λ) s x))
                          (λ (v)
-                           (EVAL (env-set envx s v)
-                                 x)))))))
+                           (EVAL (env-set envx s v) x)))))))
     'λ... (primf 'λ... 2
                  (λ (envs s envx x)
                    (unlazy
                     s
                     (λ (s)
-                      (func... (list '(_G_ 'chenv) envx (list '_G_ (list 'quote (list 'λ... s x))))
+                      (func... (list '(_G_ chenv) envx (list '(_G_ λ...) s x))
                                (λ (v)
-                                 (EVAL (env-set envx s v)
-                                       x)))))))
+                                 (EVAL (env-set envx s v) x)))))))
+    'f (primf 'f 3
+              (λ (enves es envs s envx x)
+                (unlazy
+                 es
+                 (λ (es)
+                   (unlazy
+                    s
+                    (λ (s)
+                      (f (list '(_G_ chenv) envx (list '(_G_ f) es s x))
+                         (λ (env v)
+                           (EVAL (env-set (env-set envx s v) es env)
+                                 x)))))))))
     )))
 
 (define (to-racket x)
