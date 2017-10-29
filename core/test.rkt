@@ -39,4 +39,5 @@
      else 1) 1)
 (e (choice2 (: (record a a) a) 0 (λ x (λ y x))) 0)
 (e ((f env x x) a) 'a)
+(e ((λ2 x y x) (: (record x x) x) 0) 0)
 (e (: (record v 0 r ((λmacro x x) v)) r) 0)

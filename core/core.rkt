@@ -61,7 +61,7 @@
                                envv
                                (list 'λ x
                                      (list 'λ y
-                                           (list 'choice x y
+                                           (list 'choice2 x y
                                                  (list 'λ x
                                                        (list 'λ y
                                                              v)))))))))
