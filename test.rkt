@@ -30,3 +30,4 @@
 (e true #t)
 (e (cons 0 1) '(0 . 1))
 (e ((cons 0) 1) '(0 . 1))
+(e (pair? ((cons 1) 2)) #t)

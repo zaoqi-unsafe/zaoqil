@@ -210,12 +210,19 @@
   (%prim-n (list 'G s)
            n
            (λ (xs) (apply f xs))))
+(define (?-prim s f)
+  (lam1 (list 'G s)
+        (λ (x)
+          (unlazy x f))))
 
 (define genv
   (newenv
    'true #t
    'false #f
+   'boolean? (?-prim 'boolean? boolean?)
    'cons (prim-n 'cons 2 cons)
+   'pair? (?-prim 'pair? pair?)
+   'if (prim-n 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
    ))
 
 (define (torkt x)
