@@ -13,7 +13,7 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+(provide core)
 (define (memorize1eq f)
   (let ([m (make-weak-hasheq)])
     (λ (x) (hash-ref m x
@@ -40,6 +40,11 @@
   (if (promise? x)
       (force+ (force x))
       x))
+(define (force* x)
+  (let ([x (force+ x)])
+    (cond
+      [(pair? x) (cons (force* (car x)) (force* (cdr x)))]
+      [else x])))
 (define (unlazy x f)
   (if (promise? x)
       (if (promise-forced? x)
@@ -73,6 +78,20 @@
           (cdr xs)
           (λ (d)
             (f (cons (car xs) d))))))))
+(define (unlazyn n less xs f)
+  (if (zero? n)
+      (f xs '())
+      (unlazy
+       xs
+       (λ (xs)
+         (if (null? xs)
+             (less)
+             (unlazyn
+              n
+              less
+              (cdr xs)
+              (λ (more d)
+                (f more (cons (car xs) d)))))))))
 
 ; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
 (struct compile-error (t f xs))
@@ -80,7 +99,7 @@
 (define syntaxerr 'syntax)
 (define (err t f xs) (raise (compile-error t f xs)))
 
-; Env -> String -> Symbol -> [Any] -> String -> TypeError
+; Env -> String -> Stream Any -> String -> TypeError
 (struct type-error (env at f parm i))
 
 ; String → Nat → [U Symbol (Promise Hash) Hash] → At
@@ -104,12 +123,6 @@
 ; f : Env -> Stream Exp -> Any
 (struct f... (exp f))
 
-(define genv
-  (newenv
-   'true #t
-   'false #f
-   ))
-
 (define (EVAL env x)
   (delay
     (unlazy
@@ -131,9 +144,83 @@
                  (cdr x)
                  (λ (xd)
                    (APPLYmacro env (car xd) (cdr xd))))]
-               [else (APPLY env (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
+               [else (APPLY (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
          [(symbol? x)
           (env-get env x
                    (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
          [(string? x) (string->list x)]
          [else x])))))
+
+(define (APPLY f xs) (%APPLY f xs (cons f xs)))
+(define (%APPLY f xs parm)
+  (unlazy
+   f
+   (λ (f)
+     (cond
+       [(lam1? f)
+        (unlazy
+         xs
+         (λ (xs)
+           (if (pair? xs)
+               (unlazy
+                ((lam1-f f) (car xs))
+                (λ (r)
+                  (if (lam...? r)
+                      (%APPLY r (cdr xs) parm)
+                      (unlazy
+                       (cdr xs)
+                       (λ (xsd)
+                         (cond
+                           [(null? xsd) r]
+                           [(lam1? r) (%APPLY r xsd parm)]
+                           [else
+                            (raise (type-error (env-at+ genv 'apply) "" parm "参数太多"))]))))))
+               (raise (type-error (env-at+ genv 'apply) "" parm "参数太少")))))]
+       [(lam...? f) ((lam...-f f) xs)]
+       [else (raise (type-error (env-at+ genv 'apply) "" parm "不是函数"))]))))
+(define (APPLYmacro env f xs) (%APPLYmacro env f xs (cons env (cons f xs))))
+(define (%APPLYmacro env f xs parm)
+  (unlazy
+   f
+   (λ (f)
+     (cond
+       [(f-n? f)
+        (unlazyn
+         (f-n-n f)
+         (λ () (raise (type-error (env-at+ genv '!) "" parm "参数太少")))
+         xs
+         (λ (more xs)
+           (if (null? more)
+               (apply (f-n-f f) (cons env xs))
+               (APPLY (apply (f-n-f f) (cons env xs)) more))))] ; BUG APPLY raise内容不正确
+       [(f...? f) ((f...-f f) env xs)]
+       [else (raise (type-error (env-at+ genv '!) "" parm "不是宏"))]))))
+
+(define (prim-f-n s n f) (f-n (list 'G s) n f))
+(define (prim-f... s f) (f... (list 'G s) f))
+(define (%prim-n exp n f)
+  (if (zero? n)
+      (f '())
+      (lam1 exp
+            (λ (x)
+              (%prim-n (list exp (list 'quote x))
+                       (pred n)
+                       (λ (xs) (f (cons x xs))))))))
+(define (prim-n s n f)
+  (%prim-n (list 'G s)
+           n
+           (λ (xs) (apply f xs))))
+
+(define genv
+  (newenv
+   'true #t
+   'false #f
+   'cons (prim-n 'cons 2 cons)
+   ))
+
+(define (torkt x)
+  (let ([x (force* x)])
+    (cond
+      [(and (pair? x) (list? x) (andmap char? x)) (list->string x)]
+      [else x])))
+(define (core x) (torkt (EVAL genv x)))
