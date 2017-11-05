@@ -100,7 +100,7 @@
 (define (err t f xs) (raise (compile-error t f xs)))
 
 ; Env -> String -> Stream Any -> String -> TypeError
-(struct type-error (env at f parm i))
+(struct type-error (env at parm i))
 
 ; String → Nat → [U Symbol (Promise Hash) Hash] → At
 (struct at (file line ss))
