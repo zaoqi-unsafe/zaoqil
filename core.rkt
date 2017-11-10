@@ -225,10 +225,15 @@
    'if (prim-n 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
 
    'λ1 (prim-f-n 'λ1 2 (λ (env s x)
-                       (lam1 (list 'chenv env (list '! '(G λ1) s x))
-                             (λ (p)
-                               (EVAL (env-set env s p) x)))))
+                         (lam1 (list 'chenv env (list '! '(G λ1) s x))
+                               (λ (p)
+                                 (EVAL (env-set env s p) x)))))
    'λ1? (?-prim 'λ1? lam1?)
+   'λ...? (?-prim 'λ...? lam...?)
+   'λ... (prim-f-n 'λ... 2 (λ (env s x)
+                             (lam... (list 'chenv env (list '! '(G λ...) s x))
+                                     (λ (p)
+                                       (EVAL (env-set env s p) x)))))
    ))
 
 (define (torkt x)
