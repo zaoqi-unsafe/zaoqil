@@ -87,7 +87,7 @@
          (if (null? xs)
              (less)
              (unlazyn
-              n
+              (pred n)
               less
               (cdr xs)
               (λ (more d)
@@ -143,7 +143,7 @@
                 (unlazy
                  (cdr x)
                  (λ (xd)
-                   (APPLYmacro env (car xd) (cdr xd))))]
+                   (APPLYmacro env (EVAL env (car xd)) (cdr xd))))]
                [else (APPLY (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
          [(symbol? x)
           (env-get env x
@@ -223,6 +223,12 @@
    'cons (prim-n 'cons 2 cons)
    'pair? (?-prim 'pair? pair?)
    'if (prim-n 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
+
+   'λ1 (prim-f-n 'λ1 2 (λ (env s x)
+                       (lam1 (list 'chenv env (list '! '(G λ1) s x))
+                             (λ (p)
+                               (EVAL (env-set env s p) x)))))
+   'λ1? (?-prim 'λ1? lam1?)
    ))
 
 (define (torkt x)
