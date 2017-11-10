@@ -272,6 +272,10 @@
                    [rec (unlazy rc make-immutable-hasheq)])
                 rec)))
    'record? (?-prim 'record? hash?)
+   'open (prim-f-n 'open 2 (λ (env rec v)
+                             (unlazy
+                              (EVAL env rec)
+                              (λ (rec) (EVAL (env+record env rec) v)))))
    ))
 
 (define (torkt x)

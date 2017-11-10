@@ -33,3 +33,4 @@
 (e (pair? ((cons 1) 2)) #t)
 (e ((! λ1 x x) 0) 0)
 (e ((! λ... xs xs) 1 2 45 7) '(1 2 45 7))
+(e (! open (! record x 0 y x) y) 0)
