@@ -144,6 +144,7 @@
                  (cdr x)
                  (λ (xd)
                    (APPLYmacro env (EVAL env (car xd)) (cdr xd))))]
+               [(eq? xa 'quote) (unlazy (cdr x) car)]
                [else (APPLY (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
          [(symbol? x)
           (env-get env x
@@ -242,6 +243,7 @@
    'cons (prim-n 'cons 2 cons)
    'pair? (?-prim 'pair? pair?)
    'if (prim-n 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
+   'quote (prim-f-n 'quote 1 (λ (env x) x))
 
    'λ1 (prim-f-n 'λ1 2 (λ (env s x)
                          (lam1 (list 'chenv env (list '! '(G λ1) s x))
