@@ -102,7 +102,7 @@
 ; Env -> String -> Stream Any -> String -> TypeError
 (struct type-error (env at parm i))
 
-; String → Nat → [U Symbol (Promise Hash) Hash] → At
+; String → Nat → [U Symbol (Promise Hash) Hash Env (Promise Env)] → At
 (struct at (file line ss))
 (define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
 
@@ -215,6 +215,25 @@
         (λ (x)
           (unlazy x f))))
 
+(define (mkpair xs f)
+  (unlazy
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unlazy
+          (car xs)
+          (λ (s)
+            (unlazy
+             (cdr xs)
+             (λ (dd)
+               (mkpair (cdr dd)
+                       (λ (d)
+                         (f (cons (cons s (car dd)) d))))))))))))
+(define (env-append env ps)
+  (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
+(define (env+record env rec) (env-append env (hash->list rec)))
+
 (define genv
   (newenv
    'true #t
@@ -234,12 +253,37 @@
                              (lam... (list 'chenv env (list '! '(G λ...) s x))
                                      (λ (p)
                                        (EVAL (env-set env s p) x)))))
+
+   'record (prim-f...
+            'record
+            (λ (env parms)
+              (letrec
+                  ([rc (delay
+                       (mkpair
+                        parms
+                        (λ (ps)
+                          (map (λ (p)
+                                 (let ([s (car p)])
+                                   (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
+                               ps))))]
+                   [newenv
+                    (delay
+                       (env-at+ (env-append env (force+ rc)) newenv))]
+                   [rec (unlazy rc make-immutable-hasheq)])
+                rec)))
+   'record? (?-prim 'record? hash?)
    ))
 
 (define (torkt x)
   (let ([x (force* x)])
     (cond
       [(and (pair? x) (list? x) (andmap char? x)) (list->string x)]
+      [(hash? x)
+       (make-immutable-hasheq
+        (map
+         (λ (p)
+           (cons (car p) (torkt (cdr p))))
+         (hash->list x)))]
       [else x])))
 (define (core x) (torkt (EVAL genv x)))
 
