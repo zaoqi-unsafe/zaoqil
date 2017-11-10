@@ -93,7 +93,7 @@
               (λ (more d)
                 (f more (cons (car xs) d)))))))))
 
-; U 'undefined 'syntax -> Symbol -> [Env * Exp] -> CompileErr
+; U 'undefined 'syntax -> Symbol -> [(U Hash Env) * Exp] -> CompileErr
 (struct compile-error (t f xs))
 (define undefined 'undefined)
 (define syntaxerr 'syntax)
@@ -261,16 +261,16 @@
             (λ (env parms)
               (letrec
                   ([rc (delay
-                       (mkpair
-                        parms
-                        (λ (ps)
-                          (map (λ (p)
-                                 (let ([s (car p)])
-                                   (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
-                               ps))))]
+                         (mkpair
+                          parms
+                          (λ (ps)
+                            (map (λ (p)
+                                   (let ([s (car p)])
+                                     (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
+                                 ps))))]
                    [newenv
                     (delay
-                       (env-at+ (env-append env (force+ rc)) newenv))]
+                      (env-at+ (env-append env (force+ rc)) newenv))]
                    [rec (unlazy rc make-immutable-hasheq)])
                 rec)))
    'record? (?-prim 'record? hash?)
@@ -278,6 +278,15 @@
                              (unlazy
                               (EVAL env rec)
                               (λ (rec) (EVAL (env+record env rec) v)))))
+   ': (prim-f-n ': 2 (λ (env rec v)
+                       (unlazy
+                        (EVAL env rec)
+                        (λ (rec)
+                          (unlazy
+                           v
+                           (λ (v)
+                             (hash-ref rec v
+                                       (λ () (raise (compile-error undefined ': (list (cons rec v))))))))))))
    ))
 
 (define (torkt x)
