@@ -359,7 +359,7 @@
 (define (space? x)
   (or (eq? x #\space) (eq? x #\tab) (eq? x #\return) (eq? x #\newline)))
 (define (delimiters? x)
-  (or (space? x) (eq? x #\() (eq? x #\)) (eq? x #\{) (eq? x #\}) (eq? x #\") (eq? x #\,) (eq? x #\') (eq? x #\`) (eq? x #\;)))
+  (or (space? x) (eq? x #\#) (eq? x #\() (eq? x #\)) (eq? x #\{) (eq? x #\}) (eq? x #\") (eq? x #\,) (eq? x #\') (eq? x #\`) (eq? x #\;)))
 (define (read-space xs)
   (let ([x (car xs)])
     (and (space? x)
