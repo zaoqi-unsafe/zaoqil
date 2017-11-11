@@ -272,10 +272,27 @@
                                   (EVAL (env-set env s p) x)))))
     'λ1? (?-prim 'λ1? lam1?)
     'λ...? (?-prim 'λ...? lam...?)
+    'f-n? (?-prim 'f-n? f-n?)
+    'f...? (?-prim 'f...? f...?)
     'λ... (prim-f-n 'λ... 2 (λ (env s x)
                               (lam... (list '! 'chenv env (list '! '(G λ...) s x))
                                       (λ (p)
                                         (EVAL (env-set env s p) x)))))
+    'f... (prim-f-n 'f... 3 (λ (env se sx x)
+                                (unlazy
+                                 se
+                                 (λ (se)
+                                   (unlazy
+                                    sx
+                                    (λ (sx)
+                                      (f...
+                                       (list '! 'chenv env (list '! '(G f...) se sx x))
+                                       (λ (nenv xs)
+                                         (EVAL (env-set
+                                                (env-set env se nenv)
+                                                sx
+                                                xs)
+                                               x)))))))))
     'f-n (prim-f-n ;未测试
           'f-n 3
           (λ (env se sx x)
