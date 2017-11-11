@@ -277,15 +277,27 @@
                              (unlazy
                               (EVAL env rec)
                               (λ (rec) (EVAL (env+record env rec) v)))))
-   ': (prim-f-n ': 2 (λ (env rec v)
-                       (unlazy
-                        (EVAL env rec)
-                        (λ (rec)
-                          (unlazy
-                           v
-                           (λ (v)
-                             (hash-ref rec v
-                                       (λ () (raise (compile-error undefined ': (list (cons rec v))))))))))))
+   ': (prim-f-n
+       ': 2
+       (λ (env rec v)
+         (unlazy
+          (EVAL env rec)
+          (λ (rec)
+            (unlazy
+             v
+             (λ (v)
+               (hash-ref rec v
+                         (λ () (raise (compile-error undefined ': (list (cons rec v))))))))))))
+   'record-has? (prim-f-n
+                 'record-has? 2
+                 (λ (env rec s)
+                   (unlazy
+                    (EVAL env rec)
+                    (λ (rec)
+                      (unlazy
+                       s
+                       (λ (s)
+                         (hash-has-key? rec s)))))))
    ))
 
 (define (torkt x)
@@ -366,9 +378,9 @@
          (readc (cdr xs)))))
 (define (skip-space xs f)
   (let ([x (car xs)])
-      (if (space? x)
-          (skip-space (cdr xs) f)
-          (f xs))))
+    (if (space? x)
+        (skip-space (cdr xs) f)
+        (f xs))))
 (define (read-symbol xs)
   (let ([x (%read-symbol xs)])
     (and x
