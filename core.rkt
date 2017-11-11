@@ -82,6 +82,7 @@
           (cdr xs)
           (λ (d)
             (f (cons (car xs) d))))))))
+(define (unlazy++ xs f) (unlazylist xs (λ (xs) (unlazy* xs f))))
 (define (unlazyn n less xs f)
   (if (zero? n)
       (f xs '())
@@ -237,6 +238,10 @@
 (define (env-append env ps)
   (foldl (λ (p env) (env-set env (car p) (cdr p))) env ps))
 (define (env+record env rec) (env-append env (hash->list rec)))
+(define (setenv* env sx xs)
+  (if (null? xs)
+      env
+      (setenv* (env-set env (car sx) (car xs)) (cdr sx) (cdr xs))))
 
 (define (LOAD c env)
   (env+record env (force+ (EVAL env c))))
@@ -262,16 +267,30 @@
                        (choice2 x y (λ (x y) (APPLY f (list x y))))))
 
     'λ1 (prim-f-n 'λ1 2 (λ (env s x)
-                          (lam1 (list 'chenv env (list '! '(G λ1) s x))
+                          (lam1 (list '! 'chenv env (list '! '(G λ1) s x))
                                 (λ (p)
                                   (EVAL (env-set env s p) x)))))
     'λ1? (?-prim 'λ1? lam1?)
     'λ...? (?-prim 'λ...? lam...?)
     'λ... (prim-f-n 'λ... 2 (λ (env s x)
-                              (lam... (list 'chenv env (list '! '(G λ...) s x))
+                              (lam... (list '! 'chenv env (list '! '(G λ...) s x))
                                       (λ (p)
                                         (EVAL (env-set env s p) x)))))
-
+    'f-n (prim-f-n ;未测试
+          'f-n 3
+          (λ (env se sx x)
+            (unlazy
+             se
+             (λ (se)
+               (unlazy++
+                sx
+                (λ (sx)
+                  (f-n
+                   (list '! 'chenv env (list '! '(G f-n) se sx x))
+                   (length sx)
+                   (λ (nenv xs)
+                     (EVAL (setenv* (env-set env se nenv) sx xs) x)))))))))
+    
     'record (prim-f...
              'record
              (λ (env parms)
