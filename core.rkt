@@ -13,7 +13,7 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-(provide core)
+(provide core coreread mustread)
 (define (memorize1eq f)
   (let ([m (make-weak-hasheq)])
     (λ (x) (hash-ref m x
@@ -301,32 +301,14 @@
       [else x])))
 (define (core x) (torkt (EVAL genv x)))
 
-
-; ----------------------------------------------------------------------------------------------------------------------------
-; 暂时未使用
-
-(define (choice2 x y f)
-  (if (promise? x)
-      (delay (choice2 y (force x) f))
-      (f x y)))
-;wip
-;(define (%choice* ps xs rs)
-;  (if (pair? ps)
-;      (%choice* (cdr ps) (cons (car ps) xs) rs)
-;      (if (null? ps)
-;          (%choice*- xs rs)
-;          (if (null? xs)
-;              (if (null? rs)
-;                  (unlazy ps (λ (ps) (%choice* ps '() '())))
-;                  (%choice* ps rs '()))
-;              (if (promise? (car xs))
-;                  (delay
-;                    (delay
-;                      (%choice* (force ps) (cdr xs) (cons (force (car xs)) rs))))
-;                  (cons (car xs) (%choice* ps (cdr xs) rs)))))))
-
 (struct reads (x r))
-(define (readst s) (readc (string->list s)))
+(define (coreread s)
+  (let ([x (readc (string->list s))])
+    (and
+     x
+     (null? (reads-r x))
+     (list (reads-x x)))))
+(define (mustread s) (car (coreread s)))
 (define (readc xs)
   (or (read-comment xs)
       (read-boolean xs)
@@ -367,7 +349,7 @@
 (define (read-char xs)
   (and (eq? (car xs) #\#)
        (let ([nxs (cdr xs)])
-         (and (eq? (car xs) #\\)
+         (and (eq? (car nxs) #\\)
               (let ([nnxs (cdr nxs)])
                 (reads (car nnxs) (cdr nnxs)))))))
 (define (read-quote xs)
@@ -421,6 +403,30 @@
          (if n
              (reads (cons (car xs) (reads-x n)) (reads-r n))
              (reads (list (car xs)) (cdr xs))))))
+
+
+; ----------------------------------------------------------------------------------------------------------------------------
+; 暂时未使用
+
+(define (choice2 x y f)
+  (if (promise? x)
+      (delay (choice2 y (force x) f))
+      (f x y)))
+;wip
+;(define (%choice* ps xs rs)
+;  (if (pair? ps)
+;      (%choice* (cdr ps) (cons (car ps) xs) rs)
+;      (if (null? ps)
+;          (%choice*- xs rs)
+;          (if (null? xs)
+;              (if (null? rs)
+;                  (unlazy ps (λ (ps) (%choice* ps '() '())))
+;                  (%choice* ps rs '()))
+;              (if (promise? (car xs))
+;                  (delay
+;                    (delay
+;                      (%choice* (force ps) (cdr xs) (cons (force (car xs)) rs))))
+;                  (cons (car xs) (%choice* ps (cdr xs) rs)))))))
 
 
 (struct ioret (v))

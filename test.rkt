@@ -35,3 +35,7 @@
 (e ((! λ... xs xs) 1 2 45 7) '(1 2 45 7))
 (e (! open (! record x (! quote a) y x) y) 'a)
 (e (! : (! record x (! quote a) y x) y) 'a)
+(check-equal? (mustread "{record x 0}") '(! record x 0))
+(check-equal? (mustread "'a") '(! quote a))
+(check-equal? (mustread "( 1 2 3        4      )") '(1 2 3 4))
+(check-equal? (mustread "#\\a") #\a)
