@@ -298,6 +298,19 @@
                        s
                        (λ (s)
                          (hash-has-key? rec s)))))))
+   'record-set (prim-f-n
+                'record-set 3
+                (λ (env rec s x)
+                  (unlazy
+                   (EVAL env rec)
+                   (λ (rec)
+                     (unlazy
+                      (EVAL env x)
+                      (λ (x)
+                        (unlazy
+                         s
+                         (λ (s)
+                           (hash-set rec s x)))))))))
    ))
 
 (define (torkt x)

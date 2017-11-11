@@ -36,6 +36,8 @@
 (e (! open (! record x (! quote a) y x) y) 'a)
 (e (! : (! record x (! quote a) y x) y) 'a)
 (e (! record-has? (! record x 0) x) #t)
+(e (! : (! record-set (! record) x 0) x) 0)
+(e (! : (! record-set (! record x 1) x 0) x) 0)
 (check-equal? (mustread "{record x 0}") '(! record x 0))
 (check-equal? (mustread "'a") '(! quote a))
 (check-equal? (mustread "( 1 2 3        4      )") '(1 2 3 4))
