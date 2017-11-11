@@ -35,6 +35,20 @@
 
 (define prelude
   '(! record
+      list (! λ... xs xs)
+      macro (! f-n env (parm x)
+               (gensym ; 缺少gensym
+                (λ (es)
+                  (eval+env
+                   env
+                   (list
+                    (! quote !)
+                    (list (! quote G) f-n)
+                    es
+                    parm
+                    (list (list (! quote G) eval+env)
+                          es
+                          x))))))
       ))
 
 
@@ -265,6 +279,12 @@
     'choice2 (prim-n 'choice2 3
                      (λ (x y f)
                        (choice2 x y (λ (x y) (APPLY f (list x y))))))
+    'eval (prim-n 'eval 1 (λ (x) (EVAL genv x)))
+    'eval+env (prim-n 'eval+env 2 (λ (env x)
+                                    (unlazy
+                                     env
+                                     (λ (env)
+                                       (EVAL env x)))))
 
     'λ1 (prim-f-n 'λ1 2 (λ (env s x)
                           (lam1 (list '! 'chenv env (list '! '(G λ1) s x))
@@ -279,20 +299,20 @@
                                       (λ (p)
                                         (EVAL (env-set env s p) x)))))
     'f... (prim-f-n 'f... 3 (λ (env se sx x)
-                                (unlazy
-                                 se
-                                 (λ (se)
-                                   (unlazy
-                                    sx
-                                    (λ (sx)
-                                      (f...
-                                       (list '! 'chenv env (list '! '(G f...) se sx x))
-                                       (λ (nenv xs)
-                                         (EVAL (env-set
-                                                (env-set env se nenv)
-                                                sx
-                                                xs)
-                                               x)))))))))
+                              (unlazy
+                               se
+                               (λ (se)
+                                 (unlazy
+                                  sx
+                                  (λ (sx)
+                                    (f...
+                                     (list '! 'chenv env (list '! '(G f...) se sx x))
+                                     (λ (nenv xs)
+                                       (EVAL (env-set
+                                              (env-set env se nenv)
+                                              sx
+                                              xs)
+                                             x)))))))))
     'f-n (prim-f-n ;未测试
           'f-n 3
           (λ (env se sx x)

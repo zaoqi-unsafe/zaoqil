@@ -32,7 +32,7 @@
 (e ((cons 0) 1) '(0 . 1))
 (e (pair? ((cons 1) 2)) #t)
 (e ((! λ1 x x) 0) 0)
-(e ((! λ... xs xs) 1 2 45 7) '(1 2 45 7))
+(e (list 1 2 45 7) '(1 2 45 7))
 (e (! open (! record x (! quote a) y x) y) 'a)
 (e (! : (! record x (! quote a) y x) y) 'a)
 (e (! record-has? (! record x 0) x) #t)
