@@ -118,7 +118,7 @@
 ; f : Stream Any -> Any
 (struct lam... (exp f))
 ; n : Nat
-; f : Env -> Exp -> ... -> Any
+; f : Env -> [Exp] -> Any
 (struct f-n (exp n f))
 ; f : Env -> Stream Exp -> Any
 (struct f... (exp f))
@@ -192,12 +192,12 @@
          xs
          (λ (more xs)
            (if (null? more)
-               (apply (f-n-f f) (cons env xs))
-               (APPLY (apply (f-n-f f) (cons env xs)) more))))] ; BUG APPLY raise内容不正确
+               ((f-n-f f) env xs)
+               (APPLY ((f-n-f f) env xs) more))))] ; BUG APPLY raise内容不正确
        [(f...? f) ((f...-f f) env xs)]
        [else (raise (type-error (env-at+ genv '!) "" parm "不是宏"))]))))
 
-(define (prim-f-n s n f) (f-n (list 'G s) n f))
+(define (prim-f-n s n f) (f-n (list 'G s) n (λ (env xs) (apply f (cons env xs)))))
 (define (prim-f... s f) (f... (list 'G s) f))
 (define (%prim-n exp n f)
   (if (zero? n)
