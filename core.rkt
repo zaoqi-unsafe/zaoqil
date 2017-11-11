@@ -144,7 +144,6 @@
                  (cdr x)
                  (λ (xd)
                    (APPLYmacro env (EVAL env (car xd)) (cdr xd))))]
-               [(eq? xa 'quote) (unlazy (cdr x) car)]
                [else (APPLY (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
          [(symbol? x)
           (env-get env x
