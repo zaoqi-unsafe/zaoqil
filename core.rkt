@@ -35,7 +35,7 @@
 
 (define prelude
   '(! record
-    ))
+      ))
 
 
 (define (succ x) (+ 1 x))
@@ -241,6 +241,11 @@
 (define (LOAD c env)
   (env+record env (force+ (EVAL env c))))
 
+(define (choice2 x y f)
+  (if (promise? x)
+      (delay (choice2 y (force x) f))
+      (f x y)))
+
 (define genv
   (LOAD
    prelude
@@ -252,6 +257,9 @@
     'pair? (?-prim 'pair? pair?)
     'if (prim-n 'if 3 (λ (b x y) (unlazy b (λ (b) (if b x y)))))
     'quote (prim-f-n 'quote 1 (λ (env x) x))
+    'choice2 (prim-n 'choice2 3
+                     (λ (x y f)
+                       (choice2 x y (λ (x y) (APPLY f (list x y))))))
 
     'λ1 (prim-f-n 'λ1 2 (λ (env s x)
                           (lam1 (list 'chenv env (list '! '(G λ1) s x))
@@ -442,10 +450,6 @@
 ; ----------------------------------------------------------------------------------------------------------------------------
 ; 暂时未使用
 
-(define (choice2 x y f)
-  (if (promise? x)
-      (delay (choice2 y (force x) f))
-      (f x y)))
 ;wip
 ;(define (%choice* ps xs rs)
 ;  (if (pair? ps)
