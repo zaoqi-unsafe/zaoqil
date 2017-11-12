@@ -37,16 +37,16 @@
   '(! record
       list (! λ... xs xs)
       macro (! f-n env (parm x)
-               (gensym ; 缺少gensym
-                (λ (es)
+               (gensym
+                (! λ1 es
                   (eval+env
                    env
                    (list
                     (! quote !)
-                    (list (! quote G) f-n)
+                    (! quote (G f-n))
                     es
                     parm
-                    (list (list (! quote G) eval+env)
+                    (list (! quote (G eval+env))
                           es
                           x))))))
       ))
@@ -313,7 +313,7 @@
                                               sx
                                               xs)
                                              x)))))))))
-    'f-n (prim-f-n ;未测试
+    'f-n (prim-f-n
           'f-n 3
           (λ (env se sx x)
             (unlazy
@@ -384,6 +384,7 @@
                           s
                           (λ (s)
                             (hash-set rec s x)))))))))
+    'gensym (prim-n 'gensym 1 (λ (f) (APPLY f (list (gensym)))))
     )))
 
 (define (torkt x)

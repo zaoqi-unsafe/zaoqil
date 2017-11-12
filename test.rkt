@@ -40,6 +40,7 @@
 (e (! : (! record-set (! record x 1) x 0) x) 0)
 (e (choice2 (! : (! record x x) x) 0 (! λ1 x (! λ1 y x))) 0)
 (e (! (! f... env xs xs) a b) '(a b))
+(e (! (! macro (x) (list (! quote !) (! quote quote) x)) a) 'a)
 (check-equal? (mustread "{record x 0}") '(! record x 0))
 (check-equal? (mustread "'a") '(! quote a))
 (check-equal? (mustread "( 1 2 3        4      )") '(1 2 3 4))
