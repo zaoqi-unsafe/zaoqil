@@ -37,18 +37,18 @@
   '(! record
       list (! λ... xs xs)
       macro (! f-n env (parm x)
-               (gensym
+               (call/gensym
                 (! λ1 es
-                  (eval+env
-                   env
-                   (list
-                    (! quote !)
-                    (! quote (G f-n))
-                    es
-                    parm
-                    (list (! quote (G eval+env))
-                          es
-                          x))))))
+                   (eval+env
+                    env
+                    (list
+                     (! quote !)
+                     (! quote (G f-n))
+                     es
+                     parm
+                     (list (! quote (G eval+env))
+                           es
+                           x))))))
       ))
 
 
@@ -112,25 +112,17 @@
               (λ (more d)
                 (f more (cons (car xs) d)))))))))
 
-; U 'undefined 'syntax -> Symbol -> [(U Hash Env) * Exp] -> CompileErr
+; U 'undefined 'syntax -> Symbol -> [Exp * Hash] -> CompileErr
 (struct compile-error (t f xs))
 (define undefined 'undefined)
 (define syntaxerr 'syntax)
-(define (err t f xs) (raise (compile-error t f xs)))
 
-; Env -> String -> Stream Any -> String -> TypeError
-(struct type-error (env at parm i))
+; Any -> String -> Stream Any -> String -> TypeError
+(struct type-error (f at parm i))
 
-; String → Nat → [U Symbol (Promise Hash) Hash Env (Promise Env)] → At
-(struct at (file line ss))
-(define (at+ x s) (at (at-file x) (at-line x) (cons s (at-ss x))))
-
-(struct env (at x))
-(define (hash->env h) (env (at "" 0 (list h)) h))
-(define (newenv . xs) (hash->env (apply hasheq xs)))
-(define (env-set e s x) (env (env-at e) (hash-set (env-x e) s x)))
-(define (env-get e s f) (hash-ref (env-x e) s f))
-(define (env-at+ e x) (env (at+ (env-at e) x) (env-x e)))
+(define newenv hasheq)
+(define env-set hash-set)
+(define (env-get e s f) (hash-ref e s f))
 
 ; f : Any -> Any
 (struct lam1 (exp f))
@@ -166,7 +158,7 @@
                [else (APPLY (EVAL env xa) (lmap (λ (x) (EVAL env x)) (cdr x)))])))]
          [(symbol? x)
           (env-get env x
-                   (λ () (raise (compile-error undefined 'eval (list (cons env x))))))]
+                   (λ () (raise (compile-error undefined 'eval (list (cons x env))))))]
          [(string? x) (string->list x)]
          [else x])))))
 
@@ -193,10 +185,10 @@
                            [(null? xsd) r]
                            [(lam1? r) (%APPLY r xsd parm)]
                            [else
-                            (raise (type-error (env-at+ genv 'apply) "" parm "参数太多"))]))))))
-               (raise (type-error (env-at+ genv 'apply) "" parm "参数太少")))))]
+                            (raise (type-error 'apply "" parm "参数太多"))]))))))
+               (raise (type-error 'apply "" parm "参数太少")))))]
        [(lam...? f) ((lam...-f f) xs)]
-       [else (raise (type-error (env-at+ genv 'apply) "" parm "不是函数"))]))))
+       [else (raise (type-error 'apply "" parm "不是函数"))]))))
 (define (APPLYmacro env f xs) (%APPLYmacro env f xs (cons env (cons f xs))))
 (define (%APPLYmacro env f xs parm)
   (unlazy
@@ -206,14 +198,14 @@
        [(f-n? f)
         (unlazyn
          (f-n-n f)
-         (λ () (raise (type-error (env-at+ genv '!) "" parm "参数太少")))
+         (λ () (raise (type-error '! "" parm "参数太少")))
          xs
          (λ (more xs)
            (if (null? more)
                ((f-n-f f) env xs)
                (APPLY ((f-n-f f) env xs) more))))] ; BUG APPLY raise内容不正确
        [(f...? f) ((f...-f f) env xs)]
-       [else (raise (type-error (env-at+ genv '!) "" parm "不是宏"))]))))
+       [else (raise (type-error '! "" parm "不是宏"))]))))
 
 (define (prim-f-n s n f) (f-n (list 'G s) n (λ (env xs) (apply f (cons env xs)))))
 (define (prim-f... s f) (f... (list 'G s) f))
@@ -337,12 +329,13 @@
                            parms
                            (λ (ps)
                              (map (λ (p)
-                                    (let ([s (car p)])
-                                      (cons s (delay-force (EVAL (env-at+ (force newenv) s) (cdr p))))))
+                                    (cons (car p)
+                                          (delay-force
+                                           (EVAL (force newenv) (cdr p)))))
                                   ps))))]
                     [newenv
                      (delay
-                       (env-at+ (env-append env (force+ rc)) newenv))]
+                       (env-append env (force+ rc)))]
                     [rec (unlazy rc make-immutable-hasheq)])
                  rec)))
     'record? (?-prim 'record? hash?)
@@ -360,31 +353,31 @@
               v
               (λ (v)
                 (hash-ref rec v
-                          (λ () (raise (compile-error undefined ': (list (cons rec v))))))))))))
-    'record-has? (prim-f-n
-                  'record-has? 2
-                  (λ (env rec s)
-                    (unlazy
-                     (EVAL env rec)
-                     (λ (rec)
-                       (unlazy
-                        s
-                        (λ (s)
-                          (hash-has-key? rec s)))))))
-    'record-set (prim-f-n
-                 'record-set 3
-                 (λ (env rec s x)
-                   (unlazy
-                    (EVAL env rec)
-                    (λ (rec)
-                      (unlazy
-                       (EVAL env x)
-                       (λ (x)
-                         (unlazy
-                          s
-                          (λ (s)
-                            (hash-set rec s x)))))))))
-    'gensym (prim-n 'gensym 1 (λ (f) (APPLY f (list (gensym)))))
+                          (λ () (raise (compile-error undefined ': (list (cons v rec))))))))))))
+    'has? (prim-f-n
+           'has? 2
+           (λ (env rec s)
+             (unlazy
+              (EVAL env rec)
+              (λ (rec)
+                (unlazy
+                 s
+                 (λ (s)
+                   (hash-has-key? rec s)))))))
+    'set (prim-f-n
+          'set 3
+          (λ (env rec s x)
+            (unlazy
+             (EVAL env rec)
+             (λ (rec)
+               (unlazy
+                (EVAL env x)
+                (λ (x)
+                  (unlazy
+                   s
+                   (λ (s)
+                     (hash-set rec s x)))))))))
+    'call/gensym (prim-n 'call/gensym 1 (λ (f) (APPLY f (list (gensym)))))
     )))
 
 (define (torkt x)
