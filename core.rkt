@@ -343,8 +343,8 @@
                               (unlazy
                                (EVAL env rec)
                                (λ (rec) (EVAL (env+record env rec) v)))))
-    ': (prim-f-n
-        ': 2
+    '@ (prim-f-n
+        '@ 2
         (λ (env rec v)
           (unlazy
            (EVAL env rec)
@@ -353,7 +353,7 @@
               v
               (λ (v)
                 (hash-ref rec v
-                          (λ () (raise (compile-error undefined ': (list (cons v rec))))))))))))
+                          (λ () (raise (compile-error undefined '@ (list (cons v rec))))))))))))
     'has? (prim-f-n
            'has? 2
            (λ (env rec s)
