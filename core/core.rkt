@@ -124,7 +124,7 @@
 (define (APPLY f xs)
   (unlazy
    f
-   (λ (f) (list '! '(! _G chenv) env (cons f (map QUOTE xs))))
+   (λ (f) (cons f (map QUOTE xs)))
    (λ (f)
      (cond
        [(λn? f) (let ([sr (zsplit-at xs (λn-n f))])
