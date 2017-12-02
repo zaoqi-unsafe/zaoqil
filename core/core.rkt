@@ -34,6 +34,7 @@
       (read-macro xs)
       (read-list xs)
       (read-char xs)
+      (read-str xs)
       (read-quote xs)
       (read-space xs)
       (read-number xs)
@@ -193,3 +194,37 @@
 (struct macro-n (exp n f))
 ; f : Env * [Any] * Stream Any -> Any ; n : Pos
 (struct macro... (exp n f))
+
+(define newenv hasheq)
+(define env-set hash-set)
+(define (env-get e s f) (hash-ref e s f))
+
+; U 'undefined 'syntax * Any * [Exp * Map] * CompileErr
+(struct compile-error (t f xs))
+(define undefinederr 'undefined)
+(define syntaxerr 'syntax)
+
+; Any * Any * Stream Any * String -> TypeError
+(struct type-error (f at parm i))
+
+(define (EVAL env x)
+  (delay
+    (undelay
+     x
+     (λ (x)
+       (cond
+         [(pair? x)
+          (undelay
+           (car x)
+           (λ (a)
+             (cond
+               [(eq? a '!)
+                (undelay
+                 (cdr x)
+                 (λ (d)
+                   (APPLYmacro env (EVAL env (car d)) (cdr d))))]
+               [else (APPLY (EVAL env a) (delay-map (λ (x) (EVAL env x)) (cdr x)))])))]
+         [(symbol? x)
+          (env-get env x
+                   (λ () (raise (compile-error undefined 'eval (list (cons x env))))))]
+         [else x])))))
