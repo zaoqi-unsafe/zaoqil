@@ -13,6 +13,12 @@
 
 ;;  You should have received a copy of the GNU Affero General Public License
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+(module s racket
+  (provide (rename-out [structt struct]))
+  (define-syntax-rule (structt x ...)
+    (struct x ... #:transparent)))
+(require 's)
+;--------------------------racket部分结束--------------------------
 (provide mayberead mustread)
 (struct reads (x r))
 (define (mayberead s)
@@ -117,3 +123,73 @@
              (reads (cons (car xs) (reads-x n)) (reads-r n))
              (reads (list (car xs)) (cdr xs))))))
 
+;----------read结束-----------------------------------------------
+
+(define (succ x) (+ 1 x))
+(define (pred x) (- x 1))
+(define (undelay x f)
+  (if (promise? x)
+      (if (promise-forced? x)
+          (undelay (force x) f)
+          (delay (undelay (force x) f)))
+      (f x)))
+(define (delay-map f xs)
+  (undelay
+   xs
+   (λ (xs)
+     (if (null? xs)
+         '()
+         (cons (f (car xs)) (delay-map f (cdr xs)))))))
+(define (undelay-list xs f)
+  (if (null? xs)
+      (f '())
+      (undelay
+       (car xs)
+       (λ (x)
+         (undelay-list
+          (cdr xs)
+          (λ (d)
+            (f (cons x d))))))))
+(define (unstream xs f)
+  (undelay
+   xs
+   (λ (xs)
+     (if (null? xs)
+         (f '())
+         (unstream
+          (cdr xs)
+          (λ (d)
+            (f (cons (car xs) d))))))))
+(define (unlazy++ xs f) (unstream xs (λ (xs) (undelay-list xs f))))
+(define (undelayN n less xs f)
+  (if (zero? n)
+      (f '() xs)
+      (undelay
+       xs
+       (λ (xs)
+         (if (null? xs)
+             (less)
+             (undelayN
+              (pred n)
+              less
+              (cdr xs)
+              (λ (d more)
+                (f (cons (car xs) d) more))))))))
+(define (force+ x)
+  (if (promise? x)
+      (force+ (force x))
+      x))
+(define (force* x)
+  (let ([x (force+ x)])
+    (cond
+      [(pair? x) (cons (force* (car x)) (force* (cdr x)))]
+      [else x])))
+
+; f : [Any] -> Any ; n : Nat
+(struct λn (exp n f))
+; f : [Any] * Stream Any -> Any ; n : Pos
+(struct λ... (exp n f))
+; f : Env * [Exp] -> Any ; n : Nat
+(struct macro-n (exp n f))
+; f : Env * [Any] * Stream Any -> Any ; n : Pos
+(struct macro... (exp n f))
