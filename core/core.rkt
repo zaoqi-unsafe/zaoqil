@@ -132,8 +132,8 @@
   (cond
     [(delay+src? x) (undelay (delay+src-d x) f)]
     [(promise? x) (if (promise-forced? x)
-          (undelay (force x) f)
-          (delay (undelay (force x) f)))]
+                      (undelay (force x) f)
+                      (delay (undelay (force x) f)))]
     [else (f x)]))
 (define (delay-map f xs)
   (undelay
@@ -211,29 +211,50 @@
 ; Any * Any * Stream Any * String -> TypeError
 (struct type-error (f at parm i))
 
+(define (_!_) (error "!!!")) ; 临时
+
 (define (EVAL env x)
   (delay
     (undelay
      x
      (λ (x)
-       (delay+src env x
-       (cond
-         [(pair? x)
-          (undelay
-           (car x)
-           (λ (a)
-             (cond
-               [(eq? a '!)
-                (undelay
-                 (cdr x)
-                 (λ (d)
-                   (APPLYmacro env (EVAL env (car d)) (cdr d))))]
-               [else (APPLY (EVAL env a) (delay-map (λ (x) (EVAL env x)) (cdr x)))])))]
-         [(symbol? x)
-          (env-get env x
-                   (λ () (raise (compile-error undefined 'eval (list (cons x env))))))]
-         [else x]))))))
+       (delay+src
+        env x
+        (cond
+          [(pair? x)
+           (undelay
+            (car x)
+            (λ (a)
+              (cond
+                [(eq? a '!)
+                 (undelay
+                  (cdr x)
+                  (λ (d)
+                    (APPLYmacro env (EVAL env (car d)) (cdr d))))]
+                [else (APPLY (EVAL env a) (delay-map (λ (x) (EVAL env x)) (cdr x)))])))]
+          [(symbol? x)
+           (if (eq? x '_G)
+               (env-get genv '_G
+                        (_!_))
+               (env-get env x
+                        (λ () (raise (compile-error undefined 'eval (list (cons x env)))))))]
+          [else x]))))))
 (define (APPLY f xs)
   (undelay
    f
    (λ (f)
+     (cond
+       [(λn? f)
+        (undelayN (λn-n f) _!_ xs
+                  (λ (xs more)
+                    (undelay
+                     more
+                     (λ (m)
+                       (if (null? m)
+                           ((λn-f f) xs)
+                           (_!_))))))]
+       [(λ...? f)
+        (undelayN (λ...-n f) _!_ xs
+                  (λ (xs more)
+                    ((λ...-f f) xs more)))]
+       [else (_!_)]))))
