@@ -34,7 +34,7 @@
       (read-macro xs)
       (read-list xs)
       (read-char xs)
-      (read-str xs)
+      ;(read-str xs)
       (read-quote xs)
       (read-space xs)
       (read-number xs)
@@ -258,4 +258,22 @@
                   (λ (xs more)
                     ((λ...-f f) xs more)))]
        [else (_!_)]))))
-(define (
+(define (APPLYmacro env m xs)
+  (undelay
+   f
+   (λ (f)
+     (cond
+       [(macro-n? f)
+        (undelayN (macro-n-n f) _!_ xs
+                  (λ (xs more)
+                    (undelay
+                     more
+                     (λ (m)
+                       (if (null? m)
+                           ((macro-n-f f) env xs)
+                           (_!_))))))]
+       [(macro...? f)
+        (undelayN (macro...-n f) _!_ xs
+                  (λ (xs more)
+                    ((macro...-f f) env xs more)))]
+       [else (_!_)]))))
