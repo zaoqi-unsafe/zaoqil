@@ -129,11 +129,12 @@
 (define (succ x) (+ 1 x))
 (define (pred x) (- x 1))
 (define (undelay x f)
-  (if (promise? x)
-      (if (promise-forced? x)
+  (cond
+    [(delay+src? x) (undelay (delay+src-d x) f)]
+    [(promise? x) (if (promise-forced? x)
           (undelay (force x) f)
-          (delay (undelay (force x) f)))
-      (f x)))
+          (delay (undelay (force x) f)))]
+    [else (f x)]))
 (define (delay-map f xs)
   (undelay
    xs
@@ -195,6 +196,9 @@
 ; f : Env * [Any] * Stream Any -> Any ; n : Pos
 (struct macro... (exp n f))
 
+(struct data (xs))
+(struct delay+src (env x d))
+
 (define newenv hasheq)
 (define env-set hash-set)
 (define (env-get e s f) (hash-ref e s f))
@@ -212,6 +216,7 @@
     (undelay
      x
      (λ (x)
+       (delay+src env x
        (cond
          [(pair? x)
           (undelay
@@ -227,4 +232,8 @@
          [(symbol? x)
           (env-get env x
                    (λ () (raise (compile-error undefined 'eval (list (cons x env))))))]
-         [else x])))))
+         [else x]))))))
+(define (APPLY f xs)
+  (undelay
+   f
+   (λ (f)
