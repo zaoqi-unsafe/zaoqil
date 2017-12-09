@@ -237,7 +237,7 @@
                (env-get genv '_G
                         (_!_))
                (env-get env x
-                        (λ () (raise (compile-error undefined 'eval (list (cons x env)))))))]
+                        (λ () (raise (compile-error undefinederr 'eval (list (cons x env)))))))]
           [else x]))))))
 (define (APPLY f xs)
   (undelay
@@ -258,7 +258,7 @@
                   (λ (xs more)
                     ((λ...-f f) xs more)))]
        [else (_!_)]))))
-(define (APPLYmacro env m xs)
+(define (APPLYmacro env f xs)
   (undelay
    f
    (λ (f)
@@ -277,3 +277,10 @@
                   (λ (xs more)
                     ((macro...-f f) env xs more)))]
        [else (_!_)]))))
+(define
+  genv
+  (newenv
+   '_G (macro-n '_G 1 (λ (x) (EVAL genv x)))
+   'if (λn '(! _G if) 3 (λ (b x y)
+                          (undelay b
+                                   (λ (b) (if b x y)))))))
